@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Tinman rust, oiling, and public maintenance log.
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Architectures: [arm64]
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref TinmanTable
+        MAX_RUST: 20
+
+Resources:
+  TinmanTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+  TinmanApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowHeaders: [content-type]
+        AllowMethods: [GET, POST, OPTIONS]
+
+  TinmanFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TinmanTable
+      Events:
+        State:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /state, Method: GET}
+        Oil:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /oil, Method: POST}
+        Maintenance:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /maintenance, Method: GET}
+        DailyRust:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(17 5 * * ? *)
+            ScheduleExpressionTimezone: America/New_York
+            Input: '{"source":"tinman.lifecycle","action":"daily-rust"}'
+
+Outputs:
+  ApiUrl:
+    Value: !Sub https://${TinmanApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+    Description: Place this URL in ../config.js.

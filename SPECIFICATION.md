@@ -103,13 +103,11 @@ A human appeal terminus may be an explicit refusal, including:
 
 The system does not promise a favorable resolution. It promises visible human listening and an honest terminus.
 
-After response, the appellant may choose:
+A person may ask through Our Lovely System:
 
-- Join us;
-- Go fuck yourself; or
-- Something else.
+> Will you join us?
 
-“Something else” remains open and must not be reduced to institutional choices.
+The appellant may answer “Go fuck yourself,” answer otherwise, or not answer. These are not equivalent choices authored by the system: the invitation originates with a person and the reply belongs to the appellant.
 
 The escape hatch guarantees exit. A person who leaves owes no explanation and must not be asked to return and explain. The system assumes the answer to “Why are you leaving?” is “Because you SUCK!” Departure and nonresponse are responses.
 
@@ -136,17 +134,33 @@ This is presented for consideration, not as a mandate. Our Lovely System will se
 - Resolution of the qualifying-review-track ambiguity.
 - The separate Our Lovely Justice System, KTLO house, credential, honor, prison, and restitution systems.
 
-## 12. Current implementation boundary
+## 12. Tinman maintenance and restoration
 
-The repository currently implements the opening ritual and the clean metallic landing interface. The recording control, durable message storage, browser, listening ledger, review tracks, classifier, transcription gate, and appeal state machine remain future increments.
+- The backend owns a durable rust count from zero through twenty.
+- Once per day, a scheduled lifecycle event adds a random zero through three rust points, capped at twenty.
+- Every successful oil squirt removes exactly one rust point.
+- Oil may be applied to Tinman or to designated interface bearings.
+- Each successful squirt creates a public maintenance entry containing the visitor's self-identification, target, timestamp, and squirt count.
+- The landing page displays the maintenance log.
+- The left tool rack contains a pointer, an axe, and an oil can.
+- The axe can be carried as a pointer but performs no action.
+- Selecting another tool returns the axe to the rack.
+- At zero rust, Tinman is restored when the interface refreshes. He claims the axe; it is no longer selectable from the rack and appears with him in the restored animation.
+- The restored background animation runs behind the still-operable controls and includes dancing, jumping, heel-clicking, an axe throw and catch across the frame boundary, and a split across two chairs.
+- Twenty key images are presented at five poses per second. Browser animation frames between changes maintain a responsive display without claiming that twenty source images constitute film-rate source animation.
+- The included browser-generated mechanical theme is an original placeholder. No protected Tinman melody or recording is shipped.
 
-## 13. Acceptance criteria for the opening ritual
+## 13. Current implementation boundary
 
-1. A new browser session opens on the rusty presentation.
-2. A visual oil can follows fine-pointer movement.
-3. Three distinct oil targets are visible and operable.
-4. Each activation produces immediate visual acknowledgement and updates the remaining count.
-5. The clean interface is not presented before all three targets are activated.
-6. The third activation triggers a reload into the metallic interface.
-7. The clean interface identifies Tinman and exposes the appeal and message-browser destinations.
-8. “Let the mechanism rust again” restores the opening ritual.
+The repository implements the durable rust lifecycle, oiling interaction, public maintenance log, tool rack, axe claim, and restored background animation. When no API endpoint is configured it identifies and uses a browser-local demonstration mode; after AWS deployment the backend is authoritative. The recording control, durable message storage, browser, listening ledger, review tracks, classifier, transcription gate, and appeal state machine remain future increments.
+
+## 14. Acceptance criteria for maintenance and restoration
+
+1. A new backend state begins with twenty rust points.
+2. Three distinct oil targets are visible and operable when the oil can is selected.
+3. Each successful activation immediately removes one rust point and creates one maintenance event.
+4. The public maintenance log identifies who applied each squirt.
+5. The axe can move as a pointer but cannot actuate an oil target.
+6. At zero rust, the axe leaves the tool rack and the restored animation starts behind the controls.
+7. A daily scheduled event adds zero through three points no more than once per UTC date and never exceeds twenty.
+8. Simultaneous oil requests cannot drive the rust count below zero.
