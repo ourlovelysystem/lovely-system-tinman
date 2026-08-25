@@ -1,3 +1,3 @@
 window.TINMAN_CONFIG = {
-  apiUrl: ""
+  apiUrl: "https://bptm6mhzrk.execute-api.us-east-1.amazonaws.com"
 };
