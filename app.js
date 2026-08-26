@@ -8,6 +8,7 @@
   const playbackSources=new WeakMap();
   let responseSession=null,interleavedPlayback=null;
   const responseIndex=new Map();
+  let recordingResults=[];
 
   function responseNotice(id,message,error=false){
     const node=document.querySelector(`[data-response-notice="${CSS.escape(id)}"]`);
@@ -317,6 +318,26 @@
     if(event.key===' '||event.key==='Enter')endAnnotation(event);
   });
 
+  function transcriptIsPresent(transcript){return Boolean(transcript&&transcript.status&&transcript.status!=='locked')}
+  function applySearch(){
+    const from=$('searchFrom').value?new Date($('searchFrom').value).getTime():null;
+    const to=$('searchTo').value?new Date($('searchTo').value).getTime():null;
+    const title=$('searchTitle').value.trim().toLowerCase();
+    const author=$('searchAuthor').value.trim().toLowerCase();
+    const min=$('searchMinResponses').value===''?null:Number($('searchMinResponses').value);
+    const max=$('searchMaxResponses').value===''?null:Number($('searchMaxResponses').value);
+    const transcript=$('searchTranscript').value;
+    const visible=recordingResults.filter(row=>{
+      const time=new Date(row.item.created_at).getTime(),count=row.responses.length,present=transcriptIsPresent(row.transcript);
+      return (from===null||time>=from)&&(to===null||time<=to)&&
+        (!title||String(row.item.title||'').toLowerCase().includes(title))&&
+        (!author||String(row.item.self_id||'').toLowerCase().includes(author))&&
+        (min===null||count>=min)&&(max===null||count<=max)&&
+        (transcript==='any'||(transcript==='present'&&present)||(transcript==='null'&&!present));
+    });
+    $('recordings').innerHTML=visible.length?visible.map(row=>responseMarkup(row.item,row.responses,row.transcript)).join(''):'<p class="empty">No recordings match these controls.</p>';
+    $('searchCount').textContent=`${visible.length} / ${recordingResults.length}`;
+  }
   async function loadRecordings(){
     closeResponseSession();responseIndex.clear();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
     try{
@@ -325,8 +346,16 @@
         Promise.all(data.items.map(item=>getResponses(item.recording_id))),
         Promise.all(data.items.map(item=>getTranscript(item.recording_id)))
       ]);
-      $('recordings').innerHTML=data.items.length?data.items.map((item,index)=>responseMarkup(item,responses[index],transcripts[index])).join(''):'<p class="empty">No recordings have been submitted.</p>';
+      recordingResults=data.items.map((item,index)=>({item,responses:responses[index],transcript:transcripts[index]}));
+      applySearch();
     }catch(error){$('recordings').innerHTML=`<p class="empty">Recording browser unavailable: ${escapeHtml(error.message)}</p>`}
   }
+  document.querySelectorAll('.search-strip input,.search-strip select').forEach(control=>{
+    control.addEventListener(control.tagName==='SELECT'?'change':'input',applySearch);
+  });
+  $('clearSearch').onclick=()=>{
+    document.querySelectorAll('.search-strip input').forEach(input=>input.value='');
+    $('searchTranscript').value='any';applySearch();
+  };
   $('refreshButton').onclick=loadRecordings;drawIdleMeter();addEventListener('resize',drawIdleMeter);loadRecordings();
 })();

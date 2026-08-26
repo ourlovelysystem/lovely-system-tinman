@@ -16,6 +16,18 @@
       <div class="meter-channel"><div class="meter-head"><strong>Playback</strong><span id="playMeterMode">Ready</span></div><canvas id="playVisualizer" aria-label="Live playback level" role="img"></canvas></div>
   </section>
   
+    <section class="panel search-strip" aria-label="Search recordings">
+      <label>From<input id="searchFrom" type="datetime-local"></label>
+      <label>To<input id="searchTo" type="datetime-local"></label>
+      <label>Title<input id="searchTitle" type="search" placeholder="Any title"></label>
+      <label>Author<input id="searchAuthor" type="search" placeholder="Any author"></label>
+      <label>Responses ≥<input id="searchMinResponses" type="number" min="0" inputmode="numeric" placeholder="0"></label>
+      <label>Responses ≤<input id="searchMaxResponses" type="number" min="0" inputmode="numeric" placeholder="Any"></label>
+      <label>Transcript<select id="searchTranscript"><option value="any">Any</option><option value="present">Is not null</option><option value="null">Is null</option></select></label>
+      <button id="clearSearch" type="button">Clear</button>
+      <output id="searchCount" aria-live="polite"></output>
+    </section>
+
   <div class="scroll-workspace">
     <header><nav class="site-nav" aria-label="Tin Man"><a href="/about.html">About &amp; Architecture</a></nav><p class="eyebrow">TINMAN / OUR LOVELY SYSTEM</p><h1>Leave a voice message.</h1><p id="modeCopy">Record an appeal. Say what happened in your own voice.</p></header>
     <section class="panel browser" aria-labelledby="browseHeading"><div class="browserHead"><div><h2 id="browseHeading">Recording browser</h2><p>Newest first.</p></div><button id="refreshButton">Refresh</button></div><div id="recordings"><p class="empty">Loading recordings…</p></div></section>

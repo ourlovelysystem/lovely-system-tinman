@@ -147,3 +147,14 @@ body.about-page{overflow:auto}
 
 /* A completed recording must expose its save action */
 .common-meter>.recorder #preview:not([hidden])~.record-submit{visibility:visible}
+
+
+/* Fixed, vertically thin recording search strip */
+:root{--search-top:184px;--search-height:54px;--workspace-top:250px}
+.search-strip{position:fixed;top:var(--search-top);left:var(--deck-side);right:var(--deck-side);height:var(--search-height);z-index:29;padding:6px 10px;display:flex;align-items:end;gap:7px;overflow-x:auto;overflow-y:hidden;box-shadow:inset 0 2px 0 #fff,inset 2px 0 0 #ffffff99,inset 0 -3px 7px #5e686d77}
+.search-strip label{flex:0 0 auto;margin:0;font-size:9px;line-height:1.1;white-space:nowrap}
+.search-strip input,.search-strip select{display:block;height:28px;margin:2px 0 0;padding:3px 6px;font:inherit;font-size:11px;border:1px solid #59636a;background:#f8fafb;color:#111}
+.search-strip input[type="datetime-local"]{width:154px}.search-strip input[type="search"]{width:125px}.search-strip input[type="number"]{width:62px}
+.search-strip select{width:92px}.search-strip button{height:28px;padding:3px 9px;margin-bottom:0}.search-strip output{align-self:center;min-width:48px;font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}
+@media(max-width:900px){:root{--search-top:214px;--workspace-top:280px}}
+@media(max-width:760px){:root{--search-top:236px;--workspace-top:302px}.search-strip{left:12px;right:12px}}
