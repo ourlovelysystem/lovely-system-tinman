@@ -3,7 +3,7 @@
   const $=id=>document.getElementById(id);
   const mode=location.pathname.toLowerCase().includes('appeal')?'appeal':'message';
   let recorder=null,stream=null,chunks=[],blob=null,blobUrl='',startedAt=0,timer=0;
-  let audioContext=null,analyser=null,meterFrame=0;
+  let audioContext=null,analyser=null,meterFrame=0,meterOwner=null;
   let responseSession=null,interleavedPlayback=null;
   const responseIndex=new Map();
 
@@ -33,7 +33,9 @@
     const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
     ctx.strokeStyle='#394248';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,canvas.clientHeight/2+.5);ctx.lineTo(canvas.clientWidth,canvas.clientHeight/2+.5);ctx.stroke();
   }
-  function startMeter(sourceStream){
+  function startMeter(sourceStream,owner,label){
+    if(audioContext){cancelAnimationFrame(meterFrame);audioContext.close();audioContext=null}
+    meterOwner=owner;$('meterMode').textContent=label;
     audioContext=new (window.AudioContext||window.webkitAudioContext)();
     analyser=audioContext.createAnalyser();analyser.fftSize=256;analyser.smoothingTimeConstant=.72;
     audioContext.createMediaStreamSource(sourceStream).connect(analyser);
@@ -51,7 +53,7 @@
       }
     };draw();
   }
-  function stopMeter(){cancelAnimationFrame(meterFrame);meterFrame=0;analyser=null;if(audioContext){audioContext.close();audioContext=null}drawIdleMeter()}
+  function stopMeter(owner){if(owner&&meterOwner!==owner)return;cancelAnimationFrame(meterFrame);meterFrame=0;analyser=null;if(audioContext){audioContext.close();audioContext=null}meterOwner=null;$('meterMode').textContent='Ready';drawIdleMeter()}
   async function api(path,options={}){
     if(!API)throw new Error('API URL is not configured.');
     const response=await fetch(API+path,options);
@@ -71,11 +73,11 @@
         stream.getTracks().forEach(track=>track.stop());stream=null;$('recordingState').textContent='Recorded';setElapsed();
       };
       recorder.start();startedAt=Date.now();timer=setInterval(setElapsed,250);
-      startMeter(stream);
+      startMeter(stream,'message','Recording message');
       $('recordButton').disabled=true;$('stopButton').disabled=false;$('submitButton').disabled=true;$('preview').hidden=true;$('recordingState').textContent='Recording…';notice('Recording locally. Nothing has been submitted yet.');
     }catch(error){notice(`Microphone unavailable: ${error.message}`,true)}
   };
-  $('stopButton').onclick=()=>{if(recorder?.state==='recording'){recorder.stop();stopMeter();clearInterval(timer);$('stopButton').disabled=true;$('recordButton').disabled=false}};
+  $('stopButton').onclick=()=>{if(recorder?.state==='recording'){recorder.stop();stopMeter('message');clearInterval(timer);$('stopButton').disabled=true;$('recordButton').disabled=false}};
   $('playButton').onclick=()=>{$('preview').paused?$('preview').play():$('preview').pause()};
   $('rewindButton').onclick=()=>{$('preview').currentTime=Math.max(0,$('preview').currentTime-10)};
   $('forwardButton').onclick=()=>{$('preview').currentTime=Math.min($('preview').duration||0,$('preview').currentTime+10)};
@@ -169,6 +171,7 @@
       session.commentStarted=Date.now();
       if(!session.holdActive)return;
       session.recorder.start();
+      startMeter(session.stream,'annotation','Annotating response');
       const holdButton=session.composer.querySelector('.comment-button');
       holdButton.classList.add('annotating');holdButton.textContent='Release to continue';
       responseNotice(session.recordingId,`Annotating at ${format(session.commentAnchor)}…`);
@@ -184,6 +187,7 @@
     session.clips.push({blob:clip,anchor_seconds:session.commentAnchor,duration_seconds:Math.round(durationMs/100)/10});
     session.spokenMs+=durationMs;session.recorder=null;
     session.composer.querySelector('.response-duration').textContent=format(session.spokenMs/1000);
+    stopMeter('annotation');
     const holdButton=session.composer.querySelector('.comment-button');
     holdButton.classList.remove('annotating');holdButton.textContent='Hold to annotate';
     session.composer.querySelector('.submit-response-button').disabled=false;

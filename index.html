@@ -18,6 +18,11 @@
       </div>
     </header>
 
+    <section class="panel common-meter" aria-labelledby="meterHeading">
+      <div class="meter-head"><h2 id="meterHeading">Audiometer</h2><span id="meterMode">Ready</span></div>
+      <canvas id="visualizer" aria-label="Shared live microphone level" role="img"></canvas>
+    </section>
+
     <section class="panel recorder" aria-labelledby="recordHeading">
       <h2 id="recordHeading">Record</h2>
       <label for="selfId">Public self-identification</label>
@@ -32,7 +37,6 @@
         <button id="forwardButton" class="jump" disabled aria-label="Jump forward 10 seconds" title="Jump forward 10 seconds">↷</button>
       </div>
       <div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div>
-      <canvas id="visualizer" aria-label="Live microphone level" role="img"></canvas>
       <audio id="preview" controls hidden></audio>
       <button id="submitButton" class="primary submit" disabled>Submit recording</button>
       <p id="notice" role="status" aria-live="polite"></p>
