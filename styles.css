@@ -418,17 +418,15 @@ body.about-page::before{
 .about-page .about-hero{
   width:100%;
   max-width:none;
-  min-height:100vh;
+  min-height:56vh;
   margin:0;
-  padding:
-    48px
-    max(24px,calc((100vw - 1160px)/2 + 52vw))
-    48px
-    max(24px,calc((100vw - 1160px)/2));
+  padding:48px max(24px,calc((100vw - 1160px)/2));
   justify-content:center;
-  background:
-    linear-gradient(90deg,rgba(0,0,0,.67) 0%,rgba(0,0,0,.40) 36%,rgba(0,0,0,.02) 69%,rgba(0,0,0,.13) 100%),
-    url('/assets/tinman-policy-vault.png') center/cover no-repeat;
+  background:none;
+}
+.about-page .about-hero h1,
+.about-page .about-hero .lede{
+  max-width:22rem;
 }
 .about-page .about-grid{
   width:min(1160px,calc(100% - 48px));
