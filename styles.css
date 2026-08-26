@@ -79,3 +79,13 @@ main{display:block;width:100%;margin:0;padding:0}
 @media(max-width:1100px){.common-meter{grid-template-columns:minmax(160px,.8fr) minmax(520px,1.6fr) minmax(160px,.8fr)}.common-meter>.recorder{grid-template-columns:48px 1fr 1fr 125px}}
 @media(max-width:900px){:root{--meter-height:194px;--workspace-top:220px}.common-meter{grid-template-columns:minmax(125px,.65fr) minmax(470px,1.8fr) minmax(125px,.65fr)}.common-meter>.recorder{grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto}.common-meter>.recorder h2{display:none}.common-meter>.recorder .record-actions{grid-column:1/3}.common-meter>.recorder .record-submit{grid-column:1/3;grid-row:3}.common-meter>.recorder #preview{left:8px;right:8px}}
 @media(max-width:760px){:root{--meter-height:216px;--workspace-top:242px}.common-meter{grid-template-columns:minmax(92px,.55fr) minmax(360px,2fr) minmax(92px,.55fr);gap:5px}.common-meter>.meter-channel .meter-head strong{font-size:9px}.common-meter>.meter-channel .meter-head span{font-size:9px}.common-meter #micVisualizer,.common-meter #playVisualizer{height:126px}}
+
+/* Hard containment for the three-part fixed deck */
+.common-meter{grid-template-columns:minmax(0,.9fr) minmax(0,2.1fr) minmax(0,.9fr);overflow:hidden}
+.common-meter>.meter-channel,.common-meter>.recorder,.common-meter>.recorder>*{min-width:0;max-width:100%}
+.common-meter>.meter-channel canvas{width:100%;max-width:100%}
+.common-meter>.recorder .controls{min-width:0;overflow:hidden}
+.common-meter>.recorder .controls button{flex:0 1 auto;min-width:0}
+@media(max-width:1100px){.common-meter{grid-template-columns:minmax(0,.72fr) minmax(0,2.25fr) minmax(0,.72fr)}}
+@media(max-width:900px){.common-meter{grid-template-columns:minmax(0,.62fr) minmax(0,2.45fr) minmax(0,.62fr)}}
+@media(max-width:760px){.common-meter{grid-template-columns:minmax(0,.52fr) minmax(0,2.65fr) minmax(0,.52fr)}}
