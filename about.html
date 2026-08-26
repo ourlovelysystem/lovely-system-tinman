@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Why Tin Man exists, what makes it different, its public source, and the AWS services behind it.">
+  <title>About Tin Man</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="about-page">
+  <main>
+    <div class="about-shell">
+      <header class="about-hero">
+        <nav class="about-nav" aria-label="Tin Man"><a href="/">← Return to Tin Man</a></nav>
+        <p class="eyebrow">TIN MAN / OUR LOVELY SYSTEM</p>
+        <h1>About Tin Man</h1>
+        <p class="lede">Tin Man is a public voice-message and response system built to make institutional contact inspectable.</p>
+      </header>
+
+      <div class="about-grid">
+        <section class="panel about-panel">
+          <h2>Why it exists</h2>
+          <p>Institutions often control a conversation by controlling its record. A message may be received privately, routed out of sight, summarized by someone else, delayed, or ignored. The person who spoke has little evidence of what reached whom, or what came back.</p>
+          <p>Tin Man makes the contact surface public. Original messages, spoken responses, and the relationship between them remain visible. Its position is simple: information asymmetry should not decide who gets heard or who must answer.</p>
+        </section>
+
+        <section class="panel about-panel">
+          <h2>Where it stands out</h2>
+          <ul>
+            <li><strong>Voice remains the source.</strong> The system does not begin by reducing a speaker to somebody else's summary.</li>
+            <li><strong>Responses attach to moments.</strong> A responder can pause the original, speak an annotation, release, and continue.</li>
+            <li><strong>The result is interleaved.</strong> Playback preserves the original sequence and inserts comments where they were made.</li>
+            <li><strong>One original can receive many responses.</strong> Each response stays aligned with the entry it addresses.</li>
+            <li><strong>Transcription is explicit.</strong> A combined transcript is unlocked on demand; it is not the primary record.</li>
+          </ul>
+        </section>
+
+        <section class="panel about-panel wide">
+          <h2>Public surface. Public source.</h2>
+          <p>Tin Man's repository is visible at <a href="https://github.com/ourlovelysystem/lovely-system-tinman" rel="external">github.com/ourlovelysystem/lovely-system-tinman</a>. The application, infrastructure template, and event history can be inspected there.</p>
+        </section>
+
+        <section class="panel about-panel wide">
+          <h2>AWS capabilities Tin Man instruments</h2>
+          <table class="aws-table">
+            <thead><tr><th>Capability</th><th>How Tin Man uses it</th></tr></thead>
+            <tbody>
+              <tr><th>AWS Amplify Hosting</th><td>Hosts the static public interface and deploys changes from the repository.</td></tr>
+              <tr><th>Amazon API Gateway</th><td>Exposes the HTTP routes used to create, complete, list, respond to, and transcribe recordings.</td></tr>
+              <tr><th>AWS Lambda</th><td>Runs the Python backend that coordinates uploads, metadata, responses, playback access, and transcription jobs.</td></tr>
+              <tr><th>Amazon S3</th><td>Stores original audio, response audio, and transcript output in a private, encrypted bucket. Presigned URLs provide time-limited upload and playback access.</td></tr>
+              <tr><th>Amazon DynamoDB</th><td>Stores recording, response, annotation, duration, and transcript-status metadata using on-demand capacity.</td></tr>
+              <tr><th>Amazon Transcribe</th><td>Creates combined written transcripts on demand from the original and its current spoken annotations.</td></tr>
+              <tr><th>AWS SAM / CloudFormation</th><td>Defines the serverless API, function, storage, permissions, events, and stack outputs as reviewable infrastructure.</td></tr>
+              <tr><th>AWS IAM</th><td>Limits the backend's working permissions to its DynamoDB table, S3 bucket, and required transcription actions.</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <footer class="about-footer">Tin Man — Where information asymmetry comes to die.</footer>
+    </div>
+  </main>
+</body>
+</html>
