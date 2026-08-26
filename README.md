@@ -1,15 +1,34 @@
 # Tinman
 
-Tinman is the voice-first listening surface for Our Lovely System and a mechanism that visibly records its own maintenance.
+Tinman is a voice-message application for Our Lovely System.
 
-The landing page opens with up to twenty durable rust points. Visitors publicly self-identify, choose the oil can, and remove one point per squirt from Tinman or the interface. At zero, Tinman claims the axe and the restored background animation begins while the controls remain available.
+The current increment deliberately contains only the functional core:
 
-The AWS SAM backend stores state and the public maintenance log in DynamoDB and adds a random zero through three rust points daily. See `backend/README.md` for deployment.
+- public self-identification
+- browser microphone recording
+- stop, replay, and ten-second seek controls
+- direct upload to private S3 storage through a short-lived URL
+- durable recording metadata in DynamoDB
+- newest-first recording browser with playback
+- `/appeals/` route tagging recordings as appeals
 
-## Routes
+Rust, oiling, axes, animation, classification, transcription, response tracks, and accolades are outside this increment. They remain in Git history and can return only after the recording path works end to end.
 
-- `/` — opening ritual and message browser landing surface
-- `/appeals/` — appeal-mode recording control (next increment)
-- `/accolades/` — reserved future behavior; no separate application or codebase
+## Deployment
 
-The route selects message behavior and tagging. It does not imply separate deployments.
+```bash
+cd backend
+sam build
+sam deploy
+```
+
+After deployment, place the `ApiUrl` output in `config.js`. Amplify will deploy the frontend from `main`.
+
+## Acceptance test
+
+1. Open `/appeals/`.
+2. Enter a public self-identification.
+3. Record, stop, replay, and seek the recording.
+4. Submit it.
+5. Refresh the page.
+6. Find the recording in the browser and play it.

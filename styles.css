@@ -1,0 +1,11 @@
+:root{color-scheme:dark;--bg:#0a0c0d;--panel:#121619;--line:#394248;--ink:#f4f5f5;--muted:#aab2b7;--accent:#d7e0e4;--danger:#ff796f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+main{width:min(900px,calc(100% - 32px));margin:0 auto;padding:48px 0 80px}
+header{margin-bottom:30px}.eyebrow{font-size:13px;letter-spacing:.18em;color:var(--muted);font-weight:800}h1{font-size:clamp(34px,7vw,64px);line-height:1;margin:.2em 0}header>p:last-child{font-size:18px;color:var(--muted)}
+.panel{border:1px solid var(--line);background:var(--panel);padding:24px;margin-top:20px}h2{margin:0 0 18px;font-size:20px}label{display:block;font-weight:700;margin-bottom:7px}input{width:100%;padding:13px;border:1px solid #59636a;background:#080a0b;color:white;font:inherit}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}button{border:1px solid #626c72;background:#1a2024;color:white;padding:11px 15px;font:inherit;font-weight:750;cursor:pointer}button:hover:not(:disabled){background:#273036}button:disabled{opacity:.38;cursor:not-allowed}.primary{background:var(--accent);color:#0b0d0e;border-color:var(--accent)}.primary:hover:not(:disabled){background:white}.submit{margin-top:15px}
+.time{display:flex;justify-content:space-between;color:var(--muted);font-variant-numeric:tabular-nums;margin:18px 0 10px}audio{width:100%;margin-top:8px}#notice{min-height:1.4em;color:var(--muted)}#notice.error{color:var(--danger)}
+.browserHead{display:flex;align-items:start;justify-content:space-between;gap:15px}.browserHead h2{margin-bottom:3px}.browserHead p,.empty{margin:0;color:var(--muted)}
+.recording{border-top:1px solid var(--line);padding:18px 0}.recording:first-child{border-top:0}.meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;margin-bottom:10px}.who{font-weight:800}.when,.details{color:var(--muted);font-size:13px}.recording audio{margin:0}
+@media(max-width:600px){main{padding-top:25px}.panel{padding:18px}.controls button{flex:1 1 42%}}

@@ -3,95 +3,43 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Tinman — Our Lovely System</title>
-  <style>
-    :root{--ink:#e9edf0;--panel:rgba(7,11,13,.88);--line:#758087;--rust:1;--accent:#cbd5da}
-    *{box-sizing:border-box} html,body{height:100%;margin:0;background:#080a0b;color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,sans-serif;overflow:hidden}
-    button,input{font:inherit} button{color:inherit}
-    #scene,#pose,#rust{position:fixed;inset:0;width:100%;height:100%}
-    #scene{object-fit:cover;filter:saturate(calc(1 - var(--rust)*.42)) brightness(calc(1 - var(--rust)*.34))}
-    #pose{object-fit:cover;opacity:0;transition:opacity .8s;z-index:1}
-    #rust{z-index:2;pointer-events:none;opacity:calc(var(--rust)*.74);mix-blend-mode:multiply;background:
-      radial-gradient(circle at 28% 42%,#8d3c10 0 1%,transparent 9%),radial-gradient(circle at 53% 61%,#a44a16 0 1%,transparent 8%),
-      radial-gradient(circle at 72% 28%,#6b2b0d 0 2%,transparent 11%),repeating-linear-gradient(16deg,transparent 0 36px,rgba(117,49,15,.16) 38px 41px)}
-    #veil{position:fixed;inset:0;z-index:3;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.72),transparent 28%,transparent 72%,rgba(0,0,0,.38)),linear-gradient(0deg,rgba(0,0,0,.72),transparent 38%)}
-    header{position:fixed;z-index:6;top:20px;left:102px;right:24px;display:flex;justify-content:space-between;align-items:start;gap:20px}
-    .brand,.status,.log{background:var(--panel);border:1px solid #657077;box-shadow:0 12px 40px #0008;backdrop-filter:blur(8px)}
-    .brand{padding:14px 18px;letter-spacing:.14em;text-transform:uppercase}.brand b{color:#fff}.brand small{display:block;color:#aeb8bd;margin-top:5px;letter-spacing:.08em}
-    .status{min-width:230px;padding:13px 16px;text-align:right}.meter{height:8px;background:#202629;margin-top:9px}.meter i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#d4dde1,#a64c1c);transition:width .4s}
-    #rack{position:fixed;z-index:7;left:18px;top:50%;transform:translateY(-50%);display:grid;gap:10px;padding:10px;background:var(--panel);border:1px solid #626b70}
-    .tool{width:64px;height:64px;border:1px solid #7c8589;background:#111719;cursor:pointer;font-size:28px}.tool[aria-pressed=true]{outline:3px solid #dce5e9;background:#263034}.tool:disabled{opacity:.32;cursor:not-allowed}
-    #cursor{position:fixed;z-index:9;left:-100px;top:-100px;font-size:44px;pointer-events:none;filter:drop-shadow(0 4px 6px #000);transform:translate(-15%,-15%)}
-    .target{position:fixed;z-index:5;width:58px;height:58px;border:2px solid #d7e0e4;border-radius:50%;background:#1119;cursor:crosshair;color:#fff;font-weight:900}.target:before,.target:after{content:"";position:absolute;background:#d7e0e4}.target:before{width:2px;height:76px;top:-11px;left:27px}.target:after{height:2px;width:76px;left:-11px;top:27px}
-    #tinmanTarget{left:46%;top:44%}#hingeTarget{right:7%;top:29%}#panelTarget{right:13%;bottom:16%}
-    .target:disabled{opacity:.2}
-    .log{position:fixed;z-index:6;left:102px;bottom:20px;width:min(590px,calc(100vw - 126px));max-height:31vh;overflow:auto;padding:14px 16px}
-    .log h2{font-size:13px;letter-spacing:.15em;text-transform:uppercase;margin:0 0 8px}.log ol{margin:0;padding-left:22px;font:13px/1.6 ui-monospace,SFMono-Regular,monospace}.log .empty{color:#9ca7ac}
-    #identity{position:fixed;z-index:8;inset:0;display:grid;place-items:center;background:#050708e8}.card{width:min(500px,90vw);padding:28px;background:#111719;border:1px solid #7b858a}.card h1{margin:0 0 8px}.card p{color:#aeb6ba}.card input{width:100%;padding:13px;background:#050708;border:1px solid #7b858a;color:white}.card button,#sound{margin-top:12px;padding:11px 16px;background:#dce5e9;color:#101416;border:0;font-weight:800;cursor:pointer}
-    #sound{position:fixed;z-index:7;right:24px;bottom:20px;margin:0;background:#101619;color:#e7edef;border:1px solid #657077}
-    #notice{position:fixed;z-index:10;top:112px;right:24px;padding:10px 14px;background:#101719e8;border:1px solid #68747a;opacity:0;transition:opacity .2s;pointer-events:none}
-    @media(max-width:700px){header{left:88px}.brand small{display:none}.status{min-width:150px}.log{left:88px;width:calc(100vw - 108px)}#rack{left:10px}.tool{width:56px;height:56px}}
-  </style>
+  <title>Tinman — Messages</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <img id="scene" src="assets/appeals-policy-vault.png" alt="Tinman confronting the Policy Vault">
-  <canvas id="pose"></canvas><div id="rust"></div><div id="veil"></div>
-  <header><div class="brand"><b>Tinman</b> / Our Lovely System<small>Oil restores motion. Maintenance leaves a record.</small></div><div class="status"><b id="stateLabel">INSPECTING</b><div id="rustText">Rust: — / 20</div><div class="meter"><i id="meter"></i></div></div></header>
-  <nav id="rack" aria-label="Tool rack">
-    <button class="tool" data-tool="pointer" aria-pressed="true" title="Pointer">↖</button>
-    <button class="tool" data-tool="axe" aria-pressed="false" title="Axe">🪓</button>
-    <button class="tool" data-tool="oil" aria-pressed="false" title="Oil can">🛢️</button>
-  </nav>
-  <div id="cursor" aria-hidden="true">↖</div>
-  <button class="target" id="tinmanTarget" data-target="tinman" aria-label="Oil Tinman"></button>
-  <button class="target" id="hingeTarget" data-target="interface-hinge" aria-label="Oil interface hinge"></button>
-  <button class="target" id="panelTarget" data-target="interface-panel" aria-label="Oil interface panel"></button>
-  <section class="log"><h2>Maintenance log</h2><ol id="entries"><li class="empty">No maintenance has been recorded.</li></ol></section>
-  <button id="sound">THEME: OFF</button><div id="notice"></div>
-  <form id="identity"><div class="card"><h1>Identify yourself.</h1><p>Oiling is public maintenance. The name you enter will appear in the log.</p><input id="name" maxlength="80" autocomplete="nickname" required placeholder="Public self-identification"><button>ENTER WORKSHOP</button></div></form>
-  <script src="config.js"></script>
-  <script>
-  (()=>{
-    const API=(window.TINMAN_CONFIG?.apiUrl||'').replace(/\/$/,'');
-    const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-    const icons={pointer:'↖',axe:'🪓',oil:'🛢️'}; let tool='pointer', rust=20, name=localStorage.tinmanSelfId||'', audio=null, soundOn=false;
-    const localKey='tinman-local-state-v1';
-    function localState(){try{return JSON.parse(localStorage[localKey])}catch(e){return null}}
-    function saveLocal(s){localStorage[localKey]=JSON.stringify(s)}
-    async function request(path,options){
-      if(API){const r=await fetch(API+path,{...options,headers:{'content-type':'application/json',...(options?.headers||{})}});if(!r.ok)throw Error(await r.text());return r.json()}
-      let s=localState()||{rust_points:20,maintenance:[],mode:'local demonstration'};
-      if(path==='/state')return s;if(path.startsWith('/maintenance'))return{items:s.maintenance};
-      if(path==='/oil'){if(s.rust_points>0){s.rust_points--;s.maintenance.unshift({self_id:name,squirts:1,target:JSON.parse(options.body).target,created_at:new Date().toISOString()});saveLocal(s)}return s}
-    }
-    function toast(t){$('#notice').textContent=t;$('#notice').style.opacity=1;setTimeout(()=>$('#notice').style.opacity=0,1800)}
-    function renderState(s){rust=Number(s.rust_points??20);document.documentElement.style.setProperty('--rust',rust/20);$('#rustText').textContent=`Rust: ${rust} / 20`;$('#meter').style.width=`${rust*5}%`;const restored=rust===0;$('#stateLabel').textContent=restored?'RESTORED — AXE CLAIMED':'RUSTED — OIL REQUIRED';$$('.target').forEach(x=>x.disabled=restored);const axe=$('[data-tool=axe]');axe.disabled=restored;if(restored&&tool==='axe')select('pointer');$('#pose').style.opacity=restored?1:0;if(restored)startAnimation();else stopAnimation()}
-    function renderLog(items){$('#entries').innerHTML=items.length?items.map(x=>`<li><b>${escapeHtml(x.self_id)}</b> — ${x.squirts||1} squirt${(x.squirts||1)===1?'':'s'} / ${escapeHtml(x.target||'tinman')} <time>${new Date(x.created_at).toLocaleString()}</time></li>`).join(''):'<li class="empty">No maintenance has been recorded.</li>'}
-    function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-    async function refresh(){try{const [s,l]=await Promise.all([request('/state'),request('/maintenance?limit=40')]);renderState(s);renderLog(l.items||[])}catch(e){toast('STATE UNAVAILABLE');console.error(e)}}
-    function select(t){tool=t;$$('.tool').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tool===t));$('#cursor').textContent=icons[t];document.body.style.cursor=t==='oil'?'crosshair':'none'}
-    $$('.tool').forEach(b=>b.onclick=()=>select(b.dataset.tool));addEventListener('pointermove',e=>{$('#cursor').style.left=e.clientX+'px';$('#cursor').style.top=e.clientY+'px'});
-    $$('.target').forEach(b=>b.onclick=async()=>{if(tool!=='oil'){toast(tool==='axe'?'THE AXE DOES NOTHING HERE':'SELECT THE OIL CAN');return}try{const s=await request('/oil',{method:'POST',body:JSON.stringify({self_id:name,target:b.dataset.target})});renderState(s);await refresh();tone(520,.09);toast('ONE RUST POINT REMOVED')}catch(e){toast('OIL FAILED');console.error(e)}});
-    $('#identity').onsubmit=e=>{e.preventDefault();name=$('#name').value.trim();if(!name)return;localStorage.tinmanSelfId=name;$('#identity').style.display='none';refresh()};if(name){$('#name').value=name;$('#identity').style.display='none'}
-    let ctx,frames=[],frameReq=0,start=0,sprite=new Image();sprite.src='assets/tinman-restored-poses.png';
-    sprite.onload=()=>{
-      const c=$('#pose'),d=devicePixelRatio||1;c.width=innerWidth*d;c.height=innerHeight*d;c.style.width=innerWidth+'px';c.style.height=innerHeight+'px';ctx=c.getContext('2d');ctx.setTransform(d,0,0,d,0,0);
-      const fw=Math.floor(sprite.width/5),fh=Math.floor(sprite.height/4);
-      frames=[...Array(20)].map((_,i)=>{
-        const f=document.createElement('canvas');f.width=fw;f.height=fh;const x=f.getContext('2d',{willReadFrequently:true});
-        x.drawImage(sprite,(i%5)*fw,Math.floor(i/5)*fh,fw,fh,0,0,fw,fh);
-        const pixels=x.getImageData(0,0,fw,fh),p=pixels.data;
-        for(let n=0;n<p.length;n+=4){const r=p[n],g=p[n+1],b=p[n+2];if((g>r*1.18&&g>b*1.12&&g>75)||(r>225&&g>225&&b>225))p[n+3]=0}
-        x.putImageData(pixels,0,0);return f;
-      });if(rust===0)startAnimation()
-    };
-    function draw(t){if(!ctx||!frames.length)return;const f=frames[Math.floor((t-start)/200)%20];ctx.clearRect(0,0,innerWidth,innerHeight);const scale=Math.max(innerWidth/f.width,innerHeight/f.height),w=f.width*scale,h=f.height*scale;ctx.drawImage(f,(innerWidth-w)/2,(innerHeight-h)/2,w,h);frameReq=requestAnimationFrame(draw)}
-    function startAnimation(){if(frameReq||!ctx)return;start=performance.now();frameReq=requestAnimationFrame(draw)} function stopAnimation(){cancelAnimationFrame(frameReq);frameReq=0;if(ctx)ctx.clearRect(0,0,innerWidth,innerHeight)}
-    function ensureAudio(){if(!audio)audio=new (AudioContext||webkitAudioContext)()}
-    function tone(freq,dur,when=0){if(!soundOn&&when===0)return;ensureAudio();const o=audio.createOscillator(),g=audio.createGain();o.type='triangle';o.frequency.value=freq;g.gain.setValueAtTime(.0001,audio.currentTime+when);g.gain.exponentialRampToValueAtTime(.08,audio.currentTime+when+.01);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+when+dur);o.connect(g).connect(audio.destination);o.start(audio.currentTime+when);o.stop(audio.currentTime+when+dur+.02)}
-    let musicTimer;$('#sound').onclick=()=>{soundOn=!soundOn;$('#sound').textContent='THEME: '+(soundOn?'ON':'OFF');clearInterval(musicTimer);if(soundOn){ensureAudio();const play=()=>[220,277,330,440,330,277].forEach((n,i)=>tone(n,.16,i*.18));play();musicTimer=setInterval(play,1400)}};
-    addEventListener('resize',()=>location.reload());refresh();setInterval(refresh,30000);
-  })();
-  </script>
+  <main>
+    <header>
+      <p class="eyebrow">TINMAN / OUR LOVELY SYSTEM</p>
+      <h1>Leave a voice message.</h1>
+      <p id="modeCopy">Record an appeal. Say what happened in your own voice.</p>
+    </header>
+
+    <section class="panel recorder" aria-labelledby="recordHeading">
+      <h2 id="recordHeading">Record</h2>
+      <label for="selfId">Public self-identification</label>
+      <input id="selfId" maxlength="80" autocomplete="nickname" placeholder="How should this recording identify you?">
+      <div class="controls">
+        <button id="recordButton" class="primary">Record</button>
+        <button id="stopButton" disabled>Stop</button>
+        <button id="rewindButton" disabled>−10 seconds</button>
+        <button id="playButton" disabled>Replay</button>
+        <button id="forwardButton" disabled>+10 seconds</button>
+      </div>
+      <div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div>
+      <audio id="preview" controls hidden></audio>
+      <button id="submitButton" class="primary submit" disabled>Submit recording</button>
+      <p id="notice" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="panel browser" aria-labelledby="browseHeading">
+      <div class="browserHead">
+        <div><h2 id="browseHeading">Recording browser</h2><p>Newest first.</p></div>
+        <button id="refreshButton">Refresh</button>
+      </div>
+      <div id="recordings"><p class="empty">Loading recordings…</p></div>
+    </section>
+  </main>
+  <script src="/config.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

@@ -1,20 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Tinman rust, oiling, and public maintenance log.
+Description: Tinman voice recorder and recording browser.
 
 Globals:
   Function:
     Runtime: python3.13
     Architectures: [arm64]
-    Timeout: 10
+    Timeout: 15
     MemorySize: 256
     Environment:
       Variables:
-        TABLE_NAME: !Ref TinmanTable
-        MAX_RUST: 20
+        TABLE_NAME: !Ref RecordingTable
+        RECORDINGS_BUCKET: !Ref RecordingsBucket
 
 Resources:
-  TinmanTable:
+  RecordingTable:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
@@ -28,6 +28,25 @@ Resources:
           KeyType: HASH
         - AttributeName: sk
           KeyType: RANGE
+
+  RecordingsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: ['*']
+            AllowedMethods: [PUT, GET, HEAD]
+            AllowedHeaders: ['*']
+            ExposedHeaders: [ETag]
+            MaxAge: 300
 
   TinmanApi:
     Type: AWS::Serverless::HttpApi
@@ -43,26 +62,25 @@ Resources:
       CodeUri: src/
       Handler: app.handler
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref TinmanTable
+        - DynamoDBCrudPolicy: {TableName: !Ref RecordingTable}
+        - S3CrudPolicy: {BucketName: !Ref RecordingsBucket}
       Events:
-        State:
+        Health:
           Type: HttpApi
-          Properties: {ApiId: !Ref TinmanApi, Path: /state, Method: GET}
-        Oil:
+          Properties: {ApiId: !Ref TinmanApi, Path: /health, Method: GET}
+        InitRecording:
           Type: HttpApi
-          Properties: {ApiId: !Ref TinmanApi, Path: /oil, Method: POST}
-        Maintenance:
+          Properties: {ApiId: !Ref TinmanApi, Path: /recordings/init, Method: POST}
+        CompleteRecording:
           Type: HttpApi
-          Properties: {ApiId: !Ref TinmanApi, Path: /maintenance, Method: GET}
-        DailyRust:
-          Type: ScheduleV2
-          Properties:
-            ScheduleExpression: cron(17 5 * * ? *)
-            ScheduleExpressionTimezone: America/New_York
-            Input: '{"source":"tinman.lifecycle","action":"daily-rust"}'
+          Properties: {ApiId: !Ref TinmanApi, Path: /recordings/complete, Method: POST}
+        ListRecordings:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /recordings, Method: GET}
 
 Outputs:
   ApiUrl:
     Value: !Sub https://${TinmanApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
     Description: Place this URL in ../config.js.
+  RecordingsBucketName:
+    Value: !Ref RecordingsBucket
