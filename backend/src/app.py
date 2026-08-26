@@ -92,13 +92,17 @@ def complete_recording(data):
         return response(409, {"error": "audio upload is not present"})
     if head.get("ContentLength", 0) <= 0:
         return response(409, {"error": "audio upload is empty"})
+    analysis_jobs = start_original_analysis_jobs(item)
     TABLE.update_item(
         Key={"pk": item["pk"], "sk": item["sk"]},
-        UpdateExpression="SET #status=:complete, completed_at=:completed, byte_size=:size",
+        UpdateExpression="SET #status=:complete, completed_at=:completed, byte_size=:size, analysis_status=:analysis, analysis_jobs=:jobs",
         ExpressionAttributeNames={"#status": "status"},
-        ExpressionAttributeValues={":complete": "complete", ":completed": now_iso(), ":size": head["ContentLength"]},
+        ExpressionAttributeValues={
+            ":complete": "complete", ":completed": now_iso(), ":size": head["ContentLength"],
+            ":analysis": "processing", ":jobs": analysis_jobs,
+        },
     )
-    return response(200, {"recording_id": recording_id, "status": "complete"})
+    return response(200, {"recording_id": recording_id, "status": "complete", "analysis_status": "processing"})
 
 
 def list_recordings(event):
@@ -120,10 +124,14 @@ def list_recordings(event):
         if item.get("status") != "complete":
             continue
         play_url = S3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": item["object_key"]}, ExpiresIn=3600)
+        analysis = resolve_original_analysis(item)
         items.append({
             "recording_id": item["recording_id"], "self_id": item["self_id"], "title": item.get("title", ""),
             "message_type": item["message_type"], "duration_seconds": float(item.get("duration_seconds", 0)),
             "created_at": item["created_at"], "play_url": play_url,
+            "requests_additional_information": analysis["requests_additional_information"],
+            "possible_sensitive_information": analysis["possible_sensitive_information"],
+            "analysis_status": analysis["status"],
         })
         if len(items) == limit:
             break
@@ -258,6 +266,8 @@ def list_responses(event):
             "is_short": duration <= original_duration,
             "speaks_for_our_lovely_system": declaration["qualifies"],
             "ack_status": declaration["status"],
+            "requests_additional_information": declaration["requests_additional_information"],
+            "possible_sensitive_information": declaration["possible_sensitive_information"],
         })
     return response(200, {"items": items})
 
@@ -420,10 +430,96 @@ def assemble_transcript(recording_id, jobs):
 
 
 
+
+QUESTION_START_PATTERN = re.compile(
+    r"\b(?:who|what|when|where|why|how|which)\b|"
+    r"\b(?:can|could|would|will|do|does|did|is|are|was|were|have|has|should|may)\s+"
+    r"(?:you|we|i|they|he|she|it|there)\b",
+    re.IGNORECASE,
+)
+INFORMATION_REQUEST_PATTERN = re.compile(
+    r"\b(?:please\s+)?(?:provide|explain|clarify|confirm|identify|describe|show|send|supply)\b|"
+    r"\b(?:tell\s+me|let\s+me\s+know|additional\s+information|more\s+information)\b",
+    re.IGNORECASE,
+)
+SENSITIVE_PATTERNS = [
+    re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE),
+    re.compile(r"\b\d{3}[-. ]?\d{2}[-. ]?\d{4}\b"),
+    re.compile(r"\b(?:\+?1[-. ]?)?\(?\d{3}\)?[-. ]?\d{3}[-. ]?\d{4}\b"),
+    re.compile(r"\b(?:\d[ -]*?){13,19}\b"),
+    re.compile(
+        r"\b(?:social\s+security|bank\s+account|routing\s+number|credit\s+card|"
+        r"debit\s+card|password|passcode|pin\s+(?:is|number)|date\s+of\s+birth|"
+        r"email\s+address|phone\s+number|home\s+address|secret\s+key|access\s+key)\b",
+        re.IGNORECASE,
+    ),
+]
+
+
+def analyze_text(text):
+    value = str(text or "").strip()
+    inquiry = "?" in value or bool(QUESTION_START_PATTERN.search(value)) or bool(INFORMATION_REQUEST_PATTERN.search(value))
+    sensitive = any(pattern.search(value) for pattern in SENSITIVE_PATTERNS)
+    return {"requests_additional_information": inquiry, "possible_sensitive_information": sensitive}
+
+
 ACKNOWLEDGMENT_PATTERN = re.compile(
     r"\bi\s+(?:(?:speak|am\s+speaking)\s+(?:for|on\s+behalf\s+of)|am\s+a\s+speaker\s+for)\s+our\s+lovely\s+system\b",
     re.IGNORECASE,
 )
+
+
+
+def start_original_analysis_jobs(item):
+    request_id = str(uuid.uuid4())
+    return [start_transcript_job(
+        item["recording_id"], request_id, "message-analysis", item["object_key"],
+        item["content_type"], item.get("self_id", "Original"),
+    )]
+
+
+def resolve_original_analysis(item):
+    if item.get("analysis_status") == "complete":
+        return {
+            "status": "complete",
+            "requests_additional_information": bool(item.get("requests_additional_information", False)),
+            "possible_sensitive_information": bool(item.get("possible_sensitive_information", False)),
+        }
+    jobs = item.get("analysis_jobs", [])
+    if not jobs:
+        jobs = start_original_analysis_jobs(item)
+        TABLE.update_item(
+            Key={"pk": item["pk"], "sk": item["sk"]},
+            UpdateExpression="SET analysis_status=:status, analysis_jobs=:jobs",
+            ExpressionAttributeValues={":status": "processing", ":jobs": jobs},
+        )
+        return {"status": "processing", "requests_additional_information": False, "possible_sensitive_information": False}
+    states = [
+        TRANSCRIBE.get_transcription_job(TranscriptionJobName=job["job_name"])
+        ["TranscriptionJob"]["TranscriptionJobStatus"]
+        for job in jobs
+    ]
+    if "FAILED" in states:
+        TABLE.update_item(
+            Key={"pk": item["pk"], "sk": item["sk"]},
+            UpdateExpression="SET analysis_status=:status",
+            ExpressionAttributeValues={":status": "failed"},
+        )
+        return {"status": "failed", "requests_additional_information": False, "possible_sensitive_information": False}
+    if any(state != "COMPLETED" for state in states):
+        return {"status": "processing", "requests_additional_information": False, "possible_sensitive_information": False}
+    text = " ".join(transcript_text(transcript_payload(job["output_key"])) for job in jobs).strip()
+    flags = analyze_text(text)
+    TABLE.update_item(
+        Key={"pk": item["pk"], "sk": item["sk"]},
+        UpdateExpression="SET analysis_status=:status, analysis_text=:text, requests_additional_information=:inquiry, possible_sensitive_information=:sensitive",
+        ExpressionAttributeValues={
+            ":status": "complete", ":text": text,
+            ":inquiry": flags["requests_additional_information"],
+            ":sensitive": flags["possible_sensitive_information"],
+        },
+    )
+    return {"status": "complete", **flags}
 
 
 def start_acknowledgment_jobs(item):
@@ -441,7 +537,11 @@ def start_acknowledgment_jobs(item):
 def resolve_acknowledgment(item):
     status = item.get("ack_status")
     if status == "complete":
-        return {"status": "complete", "qualifies": bool(item.get("speaks_for_our_lovely_system", False))}
+        return {
+            "status": "complete", "qualifies": bool(item.get("speaks_for_our_lovely_system", False)),
+            "requests_additional_information": bool(item.get("requests_additional_information", False)),
+            "possible_sensitive_information": bool(item.get("possible_sensitive_information", False)),
+        }
     jobs = item.get("ack_jobs", [])
     if not jobs:
         jobs = start_acknowledgment_jobs(item)
@@ -450,7 +550,7 @@ def resolve_acknowledgment(item):
             UpdateExpression="SET ack_status=:status, ack_jobs=:jobs",
             ExpressionAttributeValues={":status": "processing", ":jobs": jobs},
         )
-        return {"status": "processing", "qualifies": False}
+        return {"status": "processing", "qualifies": False, "requests_additional_information": False, "possible_sensitive_information": False}
 
     states = [
         TRANSCRIBE.get_transcription_job(TranscriptionJobName=job["job_name"])
@@ -463,18 +563,23 @@ def resolve_acknowledgment(item):
             UpdateExpression="SET ack_status=:status",
             ExpressionAttributeValues={":status": "failed"},
         )
-        return {"status": "failed", "qualifies": False}
+        return {"status": "failed", "qualifies": False, "requests_additional_information": False, "possible_sensitive_information": False}
     if any(state != "COMPLETED" for state in states):
         return {"status": "processing", "qualifies": False}
 
     text = " ".join(transcript_text(transcript_payload(job["output_key"])) for job in jobs).strip()
     qualifies = bool(ACKNOWLEDGMENT_PATTERN.search(text))
+    flags = analyze_text(text)
     TABLE.update_item(
         Key={"pk": item["pk"], "sk": item["sk"]},
-        UpdateExpression="SET ack_status=:status, speaks_for_our_lovely_system=:qualifies, acknowledgment_text=:text",
-        ExpressionAttributeValues={":status": "complete", ":qualifies": qualifies, ":text": text},
+        UpdateExpression="SET ack_status=:status, speaks_for_our_lovely_system=:qualifies, acknowledgment_text=:text, requests_additional_information=:inquiry, possible_sensitive_information=:sensitive",
+        ExpressionAttributeValues={
+            ":status": "complete", ":qualifies": qualifies, ":text": text,
+            ":inquiry": flags["requests_additional_information"],
+            ":sensitive": flags["possible_sensitive_information"],
+        },
     )
-    return {"status": "complete", "qualifies": qualifies}
+    return {"status": "complete", "qualifies": qualifies, **flags}
 
 
 def get_transcript(event):

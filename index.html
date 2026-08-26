@@ -48,6 +48,8 @@
       <label>Responses ≤<input id="searchMaxResponses" type="number" min="0" inputmode="numeric" placeholder="Any"></label>
       <label>Transcript<select id="searchTranscript"><option value="any">Any</option><option value="present">Is not null</option><option value="null">Is null</option></select></label>
       <label>System speaker<select id="searchSpeaker"><option value="any">Any</option><option value="declared">Declared</option><option value="absent">Not declared</option></select></label>
+      <label>Inquiry<select id="searchInquiry"><option value="any">Any</option><option value="present">Present</option><option value="absent">Absent</option></select></label>
+      <label>Sensitive<select id="searchSensitive"><option value="any">Any</option><option value="present">Possible</option><option value="absent">Not detected</option></select></label>
       <button id="clearSearch" type="button">Clear</button>
       <output id="searchCount" aria-live="polite"></output>
     </section>

@@ -139,6 +139,8 @@
         <div class="reply-meta">
           <div><strong>${escapeHtml(reply.self_id)}</strong><span>${format(reply.duration_seconds)} spoken</span></div>
           ${reply.speaks_for_our_lovely_system?'<span class="system-speaker-badge" title="This responder says: I speak for Our Lovely System." aria-label="Declared speaker for Our Lovely System">🫀</span>':''}
+          ${reply.requests_additional_information?'<span class="inquiry-badge" title="This response appears to request additional information." aria-label="Question or information request detected">🔎</span>':''}
+          ${reply.possible_sensitive_information?'<span class="sensitive-badge" title="Possible sensitive information detected. Audio and transcript are unchanged." aria-label="Possible sensitive information detected">⚠️</span>':''}
           ${reply.is_short?'<span class="duration-verdict" title="Response does not exceed the original recording" aria-label="Response does not exceed the original recording">👎</span>':''}
         </div>
         <button class="interleaved-button primary" data-play-interleaved="${escapeHtml(reply.response_id)}">▶ Play interleaved result</button>
@@ -146,7 +148,7 @@
     return `<article class="thread" data-recording-id="${escapeHtml(item.recording_id)}">
       <div class="thread-grid">
         <section class="thread-cell original-cell">
-          <div class="column-label">Original</div>
+          <div class="column-label">Original <span class="original-flags">${item.requests_additional_information?'<span class="inquiry-badge" title="This message appears to request additional information." aria-label="Question or information request detected">🔎</span>':''}${item.possible_sensitive_information?'<span class="sensitive-badge" title="Possible sensitive information detected. Audio and transcript are unchanged." aria-label="Possible sensitive information detected">⚠️</span>':''}</span></div>
           <div class="meta"><div><div class="recordingTitle">${escapeHtml(item.title||'Untitled recording')}</div><div class="who">${escapeHtml(item.self_id)}</div><div class="details">${escapeHtml(item.message_type)} · ${format(item.duration_seconds)}</div></div><time class="when">${new Date(item.created_at).toLocaleString()}</time></div>
           <audio class="source-audio" controls preload="none" crossorigin="anonymous" src="${escapeHtml(item.play_url)}"></audio>
         </section>
@@ -329,15 +331,21 @@
     const max=$('searchMaxResponses').value===''?null:Number($('searchMaxResponses').value);
     const transcript=$('searchTranscript').value;
     const speaker=$('searchSpeaker').value;
+    const inquiry=$('searchInquiry').value;
+    const sensitive=$('searchSensitive').value;
     const visible=recordingResults.filter(row=>{
       const time=new Date(row.item.created_at).getTime(),count=row.responses.length,present=transcriptIsPresent(row.transcript);
       const declared=row.responses.some(reply=>reply.speaks_for_our_lovely_system);
+      const hasInquiry=Boolean(row.item.requests_additional_information)||row.responses.some(reply=>reply.requests_additional_information);
+      const hasSensitive=Boolean(row.item.possible_sensitive_information)||row.responses.some(reply=>reply.possible_sensitive_information);
       return (from===null||time>=from)&&(to===null||time<=to)&&
         (!title||String(row.item.title||'').toLowerCase().includes(title))&&
         (!author||String(row.item.self_id||'').toLowerCase().includes(author))&&
         (min===null||count>=min)&&(max===null||count<=max)&&
         (transcript==='any'||(transcript==='present'&&present)||(transcript==='null'&&!present))&&
-        (speaker==='any'||(speaker==='declared'&&declared)||(speaker==='absent'&&!declared));
+        (speaker==='any'||(speaker==='declared'&&declared)||(speaker==='absent'&&!declared))&&
+        (inquiry==='any'||(inquiry==='present'&&hasInquiry)||(inquiry==='absent'&&!hasInquiry))&&
+        (sensitive==='any'||(sensitive==='present'&&hasSensitive)||(sensitive==='absent'&&!hasSensitive));
     });
     $('recordings').innerHTML=visible.length?visible.map(row=>responseMarkup(row.item,row.responses,row.transcript)).join(''):'<p class="empty">No recordings match these controls.</p>';
     $('searchCount').textContent=`${visible.length} / ${recordingResults.length}`;
@@ -365,7 +373,7 @@
   });
   $('clearSearch').onclick=()=>{
     document.querySelectorAll('.search-strip input').forEach(input=>input.value='');
-    $('searchTranscript').value='any';$('searchSpeaker').value='any';applySearch();
+    $('searchTranscript').value='any';$('searchSpeaker').value='any';$('searchInquiry').value='any';$('searchSensitive').value='any';applySearch();
   };
   $('refreshButton').onclick=loadRecordings;drawIdleMeter();addEventListener('resize',drawIdleMeter);loadRecordings();
 })();
