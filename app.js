@@ -124,11 +124,11 @@
 
   function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function transcriptMarkup(item,transcript){
-    if(!transcript||transcript.status==='locked')return `<div class="column-label">+3 Written transcript</div><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Unlock transcript</button>`;
-    if(transcript.status==='processing')return '<div class="column-label">+3 Written transcript</div><p class="transcript-state">Transcribing…</p>';
-    if(transcript.status==='failed')return `<div class="column-label">+3 Written transcript</div><p class="transcript-state error">Transcription failed.</p><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Try again</button>`;
+    if(!transcript||transcript.status==='locked')return `<div class="column-label">+2 Written transcript</div><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Unlock transcript</button>`;
+    if(transcript.status==='processing')return '<div class="column-label">+2 Written transcript</div><p class="transcript-state">Transcribing…</p>';
+    if(transcript.status==='failed')return `<div class="column-label">+2 Written transcript</div><p class="transcript-state error">Transcription failed.</p><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Try again</button>`;
     const parts=(transcript.parts||[]).map(part=>`<p class="transcript-part ${part.role}"><strong>${escapeHtml(part.speaker)}</strong><span>${escapeHtml(part.text)}</span></p>`).join('');
-    return `<div class="column-label">+3 Written transcript</div>${transcript.status==='stale'?'<p class="transcript-state">New responses are not included.</p>':''}<div class="transcript-parts">${parts||'<p class="empty">No speech detected.</p>'}</div>${transcript.status==='stale'?`<button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Update transcript</button>`:''}`;
+    return `<div class="column-label">+2 Written transcript</div>${transcript.status==='stale'?'<p class="transcript-state">New responses are not included.</p>':''}<div class="transcript-parts">${parts||'<p class="empty">No speech detected.</p>'}</div>${transcript.status==='stale'?`<button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Update transcript</button>`:''}`;
   }
 
   function responseMarkup(item,responses,transcript){
@@ -162,7 +162,6 @@
             <p class="response-notice" data-response-notice="${escapeHtml(item.recording_id)}" role="status"></p>
           </div>
         </section>
-        <div class="thread-cell future-cell" aria-hidden="true"><div class="column-label">+2</div><span>Nested workflow</span></div>
         <section class="thread-cell transcript-cell">${transcriptMarkup(item,transcript)}</section>
       </div>
     </article>`;
