@@ -5,7 +5,7 @@
   let recorder=null,stream=null,chunks=[],blob=null,blobUrl='',startedAt=0,timer=0;
   let audioContext=null,analyser=null,meterFrame=0;
 
-  $('modeCopy').textContent=mode==='appeal'?'Preferred outward-facing contact surface. Recordings are inspectable here. Get a public response.':'Preferred outward-facing contact surface. Recordings are inspectable here. Get a public response.';
+  $('modeCopy').textContent=mode==='appeal'?'Preferred outward-facing contact surface. Recordings are inspectable here. Get a public response. Hold Our Lovely System responsible.':'Preferred outward-facing contact surface. Recordings are inspectable here. Get a public response. Hold Our Lovely System responsible.';
   if(!$('title')){
     const input=document.createElement('input');input.id='title';input.maxLength=120;input.placeholder='Optional recording title';
     const label=document.createElement('label');label.htmlFor='title';label.textContent='Title';
