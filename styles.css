@@ -187,3 +187,9 @@ body.about-page{overflow:auto}
 .inquiry-badge,.sensitive-badge{font-size:18px;line-height:1;cursor:help}.sensitive-badge{filter:drop-shadow(0 1px 0 #fff)}
 .original-flags{float:right;display:inline-flex;gap:4px}.reply-card:has(.inquiry-badge){box-shadow:inset 0 0 0 1px rgba(64,94,106,.25)}
 .search-strip label:has(#searchInquiry) select,.search-strip label:has(#searchSensitive) select{width:94px}
+
+
+/* Exact quarantine keyword marker */
+.quarantine-badge{font-size:19px;line-height:1;cursor:help;filter:drop-shadow(0 1px 0 #fff)}
+.reply-card:has(.quarantine-badge){outline:2px solid rgba(103,88,12,.45);outline-offset:-2px}
+.search-strip label:has(#searchQuarantine) select{width:96px}

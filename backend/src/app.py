@@ -132,6 +132,7 @@ def list_recordings(event):
             "requests_additional_information": analysis["requests_additional_information"],
             "possible_sensitive_information": analysis["possible_sensitive_information"],
             "analysis_status": analysis["status"],
+            "contains_quarantine": analysis["contains_quarantine"],
         })
         if len(items) == limit:
             break
@@ -268,6 +269,7 @@ def list_responses(event):
             "ack_status": declaration["status"],
             "requests_additional_information": declaration["requests_additional_information"],
             "possible_sensitive_information": declaration["possible_sensitive_information"],
+            "contains_quarantine": declaration["contains_quarantine"],
         })
     return response(200, {"items": items})
 
@@ -460,7 +462,12 @@ def analyze_text(text):
     value = str(text or "").strip()
     inquiry = "?" in value or bool(QUESTION_START_PATTERN.search(value)) or bool(INFORMATION_REQUEST_PATTERN.search(value))
     sensitive = any(pattern.search(value) for pattern in SENSITIVE_PATTERNS)
-    return {"requests_additional_information": inquiry, "possible_sensitive_information": sensitive}
+    quarantine = bool(re.search(r"\\bquarantine\\b", value, re.IGNORECASE))
+    return {
+        "requests_additional_information": inquiry,
+        "possible_sensitive_information": sensitive,
+        "contains_quarantine": quarantine,
+    }
 
 
 ACKNOWLEDGMENT_PATTERN = re.compile(
@@ -484,6 +491,7 @@ def resolve_original_analysis(item):
             "status": "complete",
             "requests_additional_information": bool(item.get("requests_additional_information", False)),
             "possible_sensitive_information": bool(item.get("possible_sensitive_information", False)),
+            "contains_quarantine": bool(item.get("contains_quarantine", False)) or bool(re.search(r"\\bquarantine\\b", str(item.get("analysis_text", "")), re.IGNORECASE)),
         }
     jobs = item.get("analysis_jobs", [])
     if not jobs:
@@ -493,7 +501,7 @@ def resolve_original_analysis(item):
             UpdateExpression="SET analysis_status=:status, analysis_jobs=:jobs",
             ExpressionAttributeValues={":status": "processing", ":jobs": jobs},
         )
-        return {"status": "processing", "requests_additional_information": False, "possible_sensitive_information": False}
+        return {"status": "processing", "requests_additional_information": False, "possible_sensitive_information": False, "contains_quarantine": False}
     states = [
         TRANSCRIBE.get_transcription_job(TranscriptionJobName=job["job_name"])
         ["TranscriptionJob"]["TranscriptionJobStatus"]
@@ -505,18 +513,19 @@ def resolve_original_analysis(item):
             UpdateExpression="SET analysis_status=:status",
             ExpressionAttributeValues={":status": "failed"},
         )
-        return {"status": "failed", "requests_additional_information": False, "possible_sensitive_information": False}
+        return {"status": "failed", "requests_additional_information": False, "possible_sensitive_information": False, "contains_quarantine": False}
     if any(state != "COMPLETED" for state in states):
         return {"status": "processing", "requests_additional_information": False, "possible_sensitive_information": False}
     text = " ".join(transcript_text(transcript_payload(job["output_key"])) for job in jobs).strip()
     flags = analyze_text(text)
     TABLE.update_item(
         Key={"pk": item["pk"], "sk": item["sk"]},
-        UpdateExpression="SET analysis_status=:status, analysis_text=:text, requests_additional_information=:inquiry, possible_sensitive_information=:sensitive",
+        UpdateExpression="SET analysis_status=:status, analysis_text=:text, requests_additional_information=:inquiry, possible_sensitive_information=:sensitive, contains_quarantine=:quarantine",
         ExpressionAttributeValues={
             ":status": "complete", ":text": text,
             ":inquiry": flags["requests_additional_information"],
             ":sensitive": flags["possible_sensitive_information"],
+            ":quarantine": flags["contains_quarantine"],
         },
     )
     return {"status": "complete", **flags}
@@ -541,6 +550,7 @@ def resolve_acknowledgment(item):
             "status": "complete", "qualifies": bool(item.get("speaks_for_our_lovely_system", False)),
             "requests_additional_information": bool(item.get("requests_additional_information", False)),
             "possible_sensitive_information": bool(item.get("possible_sensitive_information", False)),
+            "contains_quarantine": bool(item.get("contains_quarantine", False)) or bool(re.search(r"\\bquarantine\\b", str(item.get("acknowledgment_text", "")), re.IGNORECASE)),
         }
     jobs = item.get("ack_jobs", [])
     if not jobs:
@@ -550,7 +560,7 @@ def resolve_acknowledgment(item):
             UpdateExpression="SET ack_status=:status, ack_jobs=:jobs",
             ExpressionAttributeValues={":status": "processing", ":jobs": jobs},
         )
-        return {"status": "processing", "qualifies": False, "requests_additional_information": False, "possible_sensitive_information": False}
+        return {"status": "processing", "qualifies": False, "requests_additional_information": False, "possible_sensitive_information": False, "contains_quarantine": False}
 
     states = [
         TRANSCRIBE.get_transcription_job(TranscriptionJobName=job["job_name"])
@@ -563,7 +573,7 @@ def resolve_acknowledgment(item):
             UpdateExpression="SET ack_status=:status",
             ExpressionAttributeValues={":status": "failed"},
         )
-        return {"status": "failed", "qualifies": False, "requests_additional_information": False, "possible_sensitive_information": False}
+        return {"status": "failed", "qualifies": False, "requests_additional_information": False, "possible_sensitive_information": False, "contains_quarantine": False}
     if any(state != "COMPLETED" for state in states):
         return {"status": "processing", "qualifies": False}
 
@@ -572,11 +582,12 @@ def resolve_acknowledgment(item):
     flags = analyze_text(text)
     TABLE.update_item(
         Key={"pk": item["pk"], "sk": item["sk"]},
-        UpdateExpression="SET ack_status=:status, speaks_for_our_lovely_system=:qualifies, acknowledgment_text=:text, requests_additional_information=:inquiry, possible_sensitive_information=:sensitive",
+        UpdateExpression="SET ack_status=:status, speaks_for_our_lovely_system=:qualifies, acknowledgment_text=:text, requests_additional_information=:inquiry, possible_sensitive_information=:sensitive, contains_quarantine=:quarantine",
         ExpressionAttributeValues={
             ":status": "complete", ":qualifies": qualifies, ":text": text,
             ":inquiry": flags["requests_additional_information"],
             ":sensitive": flags["possible_sensitive_information"],
+            ":quarantine": flags["contains_quarantine"],
         },
     )
     return {"status": "complete", "qualifies": qualifies, **flags}
