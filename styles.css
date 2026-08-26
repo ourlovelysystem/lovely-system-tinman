@@ -35,3 +35,8 @@ header{grid-column:1/-1;width:min(980px,100%);padding:0 8px;color:white;text-sha
 .common-meter,.recorder{box-shadow:inset 0 2px 0 #fff,inset 2px 0 0 #ffffff99,inset 0 -3px 7px #5e686d77}
 
 button:active:not(:disabled){box-shadow:inset 0 2px 4px #35404566;transform:translateY(1px)}
+
+/* Buoyant working controls: stay available while the recording ledger scrolls. */
+.common-meter{position:sticky;top:12px;z-index:20}
+.recorder{position:sticky;top:104px;z-index:10}
+@media(max-width:760px){.common-meter,.recorder{position:static}}
