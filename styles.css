@@ -158,3 +158,16 @@ body.about-page{overflow:auto}
 .search-strip select{width:92px}.search-strip button{height:28px;padding:3px 9px;margin-bottom:0}.search-strip output{align-self:center;min-width:48px;font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap}
 @media(max-width:900px){:root{--search-top:214px;--workspace-top:280px}}
 @media(max-width:760px){:root{--search-top:236px;--workspace-top:302px}.search-strip{left:12px;right:12px}}
+
+
+/* Compact fixed control deck */
+:root{--meter-height:116px;--search-top:136px;--workspace-top:202px}
+.common-meter{height:var(--meter-height);padding-top:6px;padding-bottom:6px}
+.common-meter #micVisualizer,.common-meter #playVisualizer{height:58px}
+.common-meter>.recorder{padding-top:4px;padding-bottom:4px;row-gap:4px}
+.common-meter>.recorder .record-field input{height:27px}
+.common-meter>.recorder .controls{margin:0}
+.common-meter>.recorder .controls button{padding-top:5px;padding-bottom:5px}
+.common-meter>.recorder .record-submit button{padding-top:6px;padding-bottom:6px}
+@media(max-width:900px){:root{--meter-height:132px;--search-top:152px;--workspace-top:218px}.common-meter #micVisualizer,.common-meter #playVisualizer{height:72px}}
+@media(max-width:760px){:root{--meter-height:148px;--search-top:168px;--workspace-top:234px}.common-meter #micVisualizer,.common-meter #playVisualizer{height:88px}}
