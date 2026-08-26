@@ -4,6 +4,12 @@
   const mode=location.pathname.toLowerCase().includes('appeal')?'appeal':'message';
   let recorder=null,stream=null,chunks=[],blob=null,blobUrl='',startedAt=0,timer=0;
   let audioContext=null,analyser=null,meterFrame=0;
+  let responseSession=null;
+
+  function responseNotice(id,message,error=false){
+    const node=document.querySelector(`[data-response-notice="${CSS.escape(id)}"]`);
+    if(node){node.textContent=message;node.classList.toggle('error',error)}
+  }
 
   if(!$('title')){
     const input=document.createElement('input');input.id='title';input.maxLength=120;input.placeholder='Optional recording title';
@@ -90,11 +96,132 @@
   };
 
   function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function responseMarkup(item,responses){
+    const responseCards=responses.length?responses.map(reply=>`
+      <article class="reply-card ${reply.is_short?'short-response':''}">
+        <div class="reply-meta">
+          <div><strong>${escapeHtml(reply.self_id)}</strong><span>${format(reply.duration_seconds)}</span></div>
+          ${reply.is_short?'<span class="duration-verdict" title="Response does not exceed the original recording" aria-label="Response does not exceed the original recording">👎</span>':''}
+        </div>
+        <audio controls preload="none" src="${escapeHtml(reply.play_url)}"></audio>
+      </article>`).join(''):'<p class="empty response-empty">No audio responses yet.</p>';
+    return `<article class="thread" data-recording-id="${escapeHtml(item.recording_id)}">
+      <div class="thread-grid">
+        <section class="thread-cell original-cell">
+          <div class="column-label">Original</div>
+          <div class="meta"><div><div class="recordingTitle">${escapeHtml(item.title||'Untitled recording')}</div><div class="who">${escapeHtml(item.self_id)}</div><div class="details">${escapeHtml(item.message_type)} · ${format(item.duration_seconds)}</div></div><time class="when">${new Date(item.created_at).toLocaleString()}</time></div>
+          <audio class="source-audio" controls preload="none" src="${escapeHtml(item.play_url)}"></audio>
+        </section>
+        <section class="thread-cell response-cell">
+          <div class="column-label">+1 Audio responses</div>
+          <div class="response-list">${responseCards}</div>
+          <button class="respond-button" data-respond-to="${escapeHtml(item.recording_id)}">Insert spoken response</button>
+          <div class="response-composer" data-composer="${escapeHtml(item.recording_id)}" hidden>
+            <label>Public self-identification<input class="response-self-id" maxlength="80" placeholder="How should this response identify you?"></label>
+            <div class="response-controls">
+              <button class="comment-button primary">Insert comment</button>
+              <button class="stop-comment-button" disabled>Finish comment</button>
+              <button class="submit-response-button" disabled>Submit response</button>
+            </div>
+            <div class="response-status"><span>Listen, pause, and insert spoken comments.</span><span class="response-duration">0:00</span></div>
+            <p class="response-notice" data-response-notice="${escapeHtml(item.recording_id)}" role="status"></p>
+          </div>
+        </section>
+        <div class="thread-cell future-cell" aria-hidden="true"><div class="column-label">+2</div><span>Nested workflow</span></div>
+        <div class="thread-cell transcript-cell" aria-disabled="true"><div class="column-label">+3 Written transcripts</div><span>Locked</span></div>
+      </div>
+    </article>`;
+  }
+
+  async function getResponses(recordingId){
+    try{return (await api(`/responses?recording_id=${encodeURIComponent(recordingId)}`)).items||[]}
+    catch(_){return []}
+  }
+
+  function closeResponseSession(){
+    if(!responseSession)return;
+    if(responseSession.recorder?.state==='recording')responseSession.recorder.stop();
+    responseSession.stream?.getTracks().forEach(track=>track.stop());
+    responseSession=null;
+  }
+
+  async function openResponseComposer(recordingId){
+    if(responseSession&&responseSession.recordingId!==recordingId)closeResponseSession();
+    const thread=document.querySelector(`[data-recording-id="${CSS.escape(recordingId)}"]`);
+    const composer=thread.querySelector('.response-composer');
+    composer.hidden=!composer.hidden;
+    if(composer.hidden)return;
+    const source=thread.querySelector('.source-audio');
+    responseSession={recordingId,thread,composer,source,recorder:null,stream:null,chunks:[],blob:null,spokenMs:0,commentStarted:0,anchors:[]};
+    responseNotice(recordingId,'Play the original. Insert a comment wherever you want to answer.');
+  }
+
+  async function startResponseComment(session){
+    try{
+      if(!session.stream)session.stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      if(!session.recorder){
+        const preferred=['audio/webm;codecs=opus','audio/mp4'].find(MediaRecorder.isTypeSupported)||'';
+        session.recorder=new MediaRecorder(session.stream,preferred?{mimeType:preferred}:undefined);
+        session.recorder.ondataavailable=e=>{if(e.data.size)session.chunks.push(e.data)};
+        session.recorder.start();
+      }else if(session.recorder.state==='paused')session.recorder.resume();
+      session.source.pause();
+      session.commentStarted=Date.now();
+      session.anchors.push(Math.round((session.source.currentTime||0)*10)/10);
+      session.composer.querySelector('.comment-button').disabled=true;
+      session.composer.querySelector('.stop-comment-button').disabled=false;
+      responseNotice(session.recordingId,`Recording comment at ${format(session.source.currentTime)}…`);
+    }catch(error){responseNotice(session.recordingId,`Microphone unavailable: ${error.message}`,true)}
+  }
+
+  function stopResponseComment(session){
+    if(!session.recorder||session.recorder.state!=='recording')return;
+    session.recorder.pause();
+    session.spokenMs+=Date.now()-session.commentStarted;
+    session.composer.querySelector('.response-duration').textContent=format(session.spokenMs/1000);
+    session.composer.querySelector('.comment-button').disabled=false;
+    session.composer.querySelector('.stop-comment-button').disabled=true;
+    session.composer.querySelector('.submit-response-button').disabled=false;
+    responseNotice(session.recordingId,'Comment inserted. Continuing the original.');
+    session.source.play().catch(()=>{});
+  }
+
+  async function submitResponse(session){
+    const selfId=session.composer.querySelector('.response-self-id').value.trim();
+    if(!selfId)return responseNotice(session.recordingId,'Self-identification is required.',true);
+    if(!session.recorder||!session.spokenMs)return responseNotice(session.recordingId,'Insert at least one spoken comment.',true);
+    if(session.recorder.state==='recording')stopResponseComment(session);
+    session.composer.querySelector('.submit-response-button').disabled=true;
+    responseNotice(session.recordingId,'Preparing response…');
+    await new Promise(resolve=>{session.recorder.addEventListener('stop',resolve,{once:true});session.recorder.stop()});
+    session.blob=new Blob(session.chunks,{type:session.recorder.mimeType||'audio/webm'});
+    try{
+      const duration=Math.round(session.spokenMs/100)/10;
+      const init=await api('/responses/init',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({recording_id:session.recordingId,self_id:selfId,content_type:session.blob.type||'audio/webm',duration_seconds:duration,anchors_seconds:session.anchors})});
+      const upload=await fetch(init.upload_url,{method:'PUT',headers:{'content-type':session.blob.type||'audio/webm'},body:session.blob});
+      if(!upload.ok)throw new Error(`Audio upload failed: ${upload.status}`);
+      await api('/responses/complete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({response_id:init.response_id,recording_id:session.recordingId})});
+      session.stream?.getTracks().forEach(track=>track.stop());responseSession=null;
+      responseNotice(session.recordingId,'Response submitted.');await loadRecordings();
+    }catch(error){responseNotice(session.recordingId,error.message,true);session.composer.querySelector('.submit-response-button').disabled=false}
+  }
+
+  $('recordings').onclick=e=>{
+    const respond=e.target.closest('[data-respond-to]');
+    if(respond)return openResponseComposer(respond.dataset.respondTo);
+    const composer=e.target.closest('.response-composer');
+    if(!composer||!responseSession)return;
+    if(e.target.closest('.comment-button'))startResponseComment(responseSession);
+    if(e.target.closest('.stop-comment-button'))stopResponseComment(responseSession);
+    if(e.target.closest('.submit-response-button'))submitResponse(responseSession);
+  };
+
   async function loadRecordings(){
-    $('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
+    closeResponseSession();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
     try{
       const data=await api(`/recordings?message_type=${encodeURIComponent(mode)}&limit=50`);
-      $('recordings').innerHTML=data.items.length?data.items.map(item=>`<article class="recording"><div class="meta"><div><div class="recordingTitle">${escapeHtml(item.title||'Untitled recording')}</div><div class="who">${escapeHtml(item.self_id)}</div><div class="details">${escapeHtml(item.message_type)} · ${format(item.duration_seconds)}</div></div><time class="when">${new Date(item.created_at).toLocaleString()}</time></div><audio controls preload="none" src="${escapeHtml(item.play_url)}"></audio></article>`).join(''):'<p class="empty">No recordings have been submitted.</p>';
+      const responses=await Promise.all(data.items.map(item=>getResponses(item.recording_id)));
+      $('recordings').innerHTML=data.items.length?data.items.map((item,index)=>responseMarkup(item,responses[index])).join(''):'<p class="empty">No recordings have been submitted.</p>';
     }catch(error){$('recordings').innerHTML=`<p class="empty">Recording browser unavailable: ${escapeHtml(error.message)}</p>`}
   }
   $('refreshButton').onclick=loadRecordings;drawIdleMeter();addEventListener('resize',drawIdleMeter);loadRecordings();

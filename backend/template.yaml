@@ -94,6 +94,15 @@ Resources:
         ListRecordings:
           Type: HttpApi
           Properties: {ApiId: !Ref TinmanApi, Path: /recordings, Method: GET}
+        InitResponse:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /responses/init, Method: POST}
+        CompleteResponse:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /responses/complete, Method: POST}
+        ListResponses:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /responses, Method: GET}
 
 Outputs:
   ApiUrl:
