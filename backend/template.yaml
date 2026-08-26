@@ -81,6 +81,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy: {TableName: !Ref RecordingTable}
         - S3CrudPolicy: {BucketName: !Ref RecordingsBucket}
+        - Statement:
+            - Effect: Allow
+              Action:
+                - transcribe:StartTranscriptionJob
+                - transcribe:GetTranscriptionJob
+              Resource: '*'
       Events:
         Health:
           Type: HttpApi
@@ -103,6 +109,12 @@ Resources:
         ListResponses:
           Type: HttpApi
           Properties: {ApiId: !Ref TinmanApi, Path: /responses, Method: GET}
+        UnlockTranscript:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /transcripts/unlock, Method: POST}
+        GetTranscript:
+          Type: HttpApi
+          Properties: {ApiId: !Ref TinmanApi, Path: /transcripts, Method: GET}
 
 Outputs:
   ApiUrl:

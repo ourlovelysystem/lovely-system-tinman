@@ -123,7 +123,15 @@
   };
 
   function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  function responseMarkup(item,responses){
+  function transcriptMarkup(item,transcript){
+    if(!transcript||transcript.status==='locked')return `<div class="column-label">+3 Written transcript</div><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Unlock transcript</button>`;
+    if(transcript.status==='processing')return '<div class="column-label">+3 Written transcript</div><p class="transcript-state">Transcribing…</p>';
+    if(transcript.status==='failed')return `<div class="column-label">+3 Written transcript</div><p class="transcript-state error">Transcription failed.</p><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Try again</button>`;
+    const parts=(transcript.parts||[]).map(part=>`<p class="transcript-part ${part.role}"><strong>${escapeHtml(part.speaker)}</strong><span>${escapeHtml(part.text)}</span></p>`).join('');
+    return `<div class="column-label">+3 Written transcript</div>${transcript.status==='stale'?'<p class="transcript-state">New responses are not included.</p>':''}<div class="transcript-parts">${parts||'<p class="empty">No speech detected.</p>'}</div>${transcript.status==='stale'?`<button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Update transcript</button>`:''}`;
+  }
+
+  function responseMarkup(item,responses,transcript){
     responses.forEach(reply=>responseIndex.set(reply.response_id,reply));
     const responseCards=responses.length?responses.map(reply=>`
       <article class="reply-card ${reply.is_short?'short-response':''}">
@@ -155,7 +163,7 @@
           </div>
         </section>
         <div class="thread-cell future-cell" aria-hidden="true"><div class="column-label">+2</div><span>Nested workflow</span></div>
-        <div class="thread-cell transcript-cell" aria-disabled="true"><div class="column-label">+3 Written transcripts</div><span>Locked</span></div>
+        <section class="thread-cell transcript-cell">${transcriptMarkup(item,transcript)}</section>
       </div>
     </article>`;
   }
@@ -163,6 +171,15 @@
   async function getResponses(recordingId){
     try{return (await api(`/responses?recording_id=${encodeURIComponent(recordingId)}`)).items||[]}
     catch(_){return []}
+  }
+  async function getTranscript(recordingId){
+    try{return await api(`/transcripts?recording_id=${encodeURIComponent(recordingId)}`)}
+    catch(_){return {status:'locked'}}
+  }
+  async function unlockTranscript(recordingId,button){
+    button.disabled=true;button.textContent='Starting…';
+    try{await api('/transcripts/unlock',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({recording_id:recordingId})});await loadRecordings()}
+    catch(error){button.disabled=false;button.textContent='Try again';}
   }
 
   function closeResponseSession(){
@@ -265,6 +282,8 @@
   }
 
   $('recordings').onclick=e=>{
+    const unlock=e.target.closest('[data-unlock-transcript]');
+    if(unlock)return unlockTranscript(unlock.dataset.unlockTranscript,unlock);
     const interleaved=e.target.closest('[data-play-interleaved]');
     if(interleaved)return playInterleaved(interleaved.dataset.playInterleaved,interleaved);
     const respond=e.target.closest('[data-respond-to]');
@@ -303,8 +322,11 @@
     closeResponseSession();responseIndex.clear();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
     try{
       const data=await api(`/recordings?message_type=${encodeURIComponent(mode)}&limit=50`);
-      const responses=await Promise.all(data.items.map(item=>getResponses(item.recording_id)));
-      $('recordings').innerHTML=data.items.length?data.items.map((item,index)=>responseMarkup(item,responses[index])).join(''):'<p class="empty">No recordings have been submitted.</p>';
+      const [responses,transcripts]=await Promise.all([
+        Promise.all(data.items.map(item=>getResponses(item.recording_id))),
+        Promise.all(data.items.map(item=>getTranscript(item.recording_id)))
+      ]);
+      $('recordings').innerHTML=data.items.length?data.items.map((item,index)=>responseMarkup(item,responses[index],transcripts[index])).join(''):'<p class="empty">No recordings have been submitted.</p>';
     }catch(error){$('recordings').innerHTML=`<p class="empty">Recording browser unavailable: ${escapeHtml(error.message)}</p>`}
   }
   $('refreshButton').onclick=loadRecordings;drawIdleMeter();addEventListener('resize',drawIdleMeter);loadRecordings();
