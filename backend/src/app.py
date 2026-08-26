@@ -132,38 +132,57 @@ def list_recordings(event):
 def init_response(data):
     recording_id = str(data.get("recording_id", "")).strip()
     self_id = str(data.get("self_id", "")).strip()
-    content_type = str(data.get("content_type", "audio/webm")).lower()
-    try:
-        duration = max(0, min(7200, float(data.get("duration_seconds", 0))))
-        anchors = [max(0, float(value)) for value in data.get("anchors_seconds", [])][:100]
-    except (TypeError, ValueError):
-        return response(400, {"error": "invalid response timing"})
     original = find_recording(recording_id)
     if not original or original.get("status") != "complete":
         return response(404, {"error": "original recording not found"})
     if not self_id or len(self_id) > 80:
         return response(400, {"error": "self_id must contain 1–80 characters"})
-    if content_type not in ALLOWED_CONTENT_TYPES:
-        return response(400, {"error": "unsupported audio content type"})
+    try:
+        duration = max(0, min(7200, float(data.get("duration_seconds", 0))))
+        incoming = data.get("segments", [])
+        if not 1 <= len(incoming) <= 100:
+            raise ValueError()
+        segments = []
+        for index, segment in enumerate(incoming):
+            content_type = str(segment.get("content_type", "audio/webm")).lower()
+            if content_type not in ALLOWED_CONTENT_TYPES:
+                return response(400, {"error": "unsupported audio content type"})
+            segments.append({
+                "index": index,
+                "anchor_seconds": max(0, float(segment.get("anchor_seconds", 0))),
+                "duration_seconds": max(0, float(segment.get("duration_seconds", 0))),
+                "content_type": content_type,
+            })
+    except (TypeError, ValueError):
+        return response(400, {"error": "invalid response segments"})
 
     response_id = str(uuid.uuid4())
     created_at = now_iso()
-    object_key = f"responses/{recording_id}/{response_id}"
+    public_segments = []
+    stored_segments = []
+    for segment in segments:
+        object_key = f"responses/{recording_id}/{response_id}/{segment['index']}"
+        upload_url = S3.generate_presigned_url(
+            "put_object",
+            Params={"Bucket": BUCKET, "Key": object_key, "ContentType": segment["content_type"]},
+            ExpiresIn=300,
+        )
+        public_segments.append({"index": segment["index"], "upload_url": upload_url})
+        stored_segments.append({
+            **segment,
+            "anchor_seconds": Decimal(str(segment["anchor_seconds"])),
+            "duration_seconds": Decimal(str(segment["duration_seconds"])),
+            "object_key": object_key,
+        })
     item = {
         "pk": f"RECORDING#{recording_id}", "sk": f"{created_at}#{response_id}",
         "response_id": response_id, "recording_id": recording_id, "self_id": self_id,
-        "content_type": content_type, "duration_seconds": Decimal(str(duration)),
+        "duration_seconds": Decimal(str(duration)),
         "original_duration_seconds": original.get("duration_seconds", Decimal("0")),
-        "anchors_seconds": [Decimal(str(value)) for value in anchors],
-        "created_at": created_at, "object_key": object_key, "status": "pending",
+        "segments": stored_segments, "created_at": created_at, "status": "pending",
     }
     TABLE.put_item(Item=item)
-    upload_url = S3.generate_presigned_url(
-        "put_object",
-        Params={"Bucket": BUCKET, "Key": object_key, "ContentType": content_type},
-        ExpiresIn=300,
-    )
-    return response(201, {"response_id": response_id, "upload_url": upload_url, "expires_in": 300})
+    return response(201, {"response_id": response_id, "segments": public_segments, "expires_in": 300})
 
 
 def find_response(recording_id, response_id):
@@ -182,17 +201,20 @@ def complete_response(data):
     item = find_response(recording_id, response_id)
     if not item:
         return response(404, {"error": "response not found"})
+    total_size = 0
     try:
-        head = S3.head_object(Bucket=BUCKET, Key=item["object_key"])
+        for segment in item.get("segments", []):
+            head = S3.head_object(Bucket=BUCKET, Key=segment["object_key"])
+            if head.get("ContentLength", 0) <= 0:
+                return response(409, {"error": "response audio insertion is empty"})
+            total_size += head["ContentLength"]
     except S3.exceptions.ClientError:
-        return response(409, {"error": "response audio upload is not present"})
-    if head.get("ContentLength", 0) <= 0:
-        return response(409, {"error": "response audio upload is empty"})
+        return response(409, {"error": "response audio insertion is not present"})
     TABLE.update_item(
         Key={"pk": item["pk"], "sk": item["sk"]},
         UpdateExpression="SET #status=:complete, completed_at=:completed, byte_size=:size",
         ExpressionAttributeNames={"#status": "status"},
-        ExpressionAttributeValues={":complete": "complete", ":completed": now_iso(), ":size": head["ContentLength"]},
+        ExpressionAttributeValues={":complete": "complete", ":completed": now_iso(), ":size": total_size},
     )
     return response(200, {"response_id": response_id, "status": "complete"})
 
@@ -211,14 +233,21 @@ def list_responses(event):
     for item in result.get("Items", []):
         if item.get("status") != "complete":
             continue
-        play_url = S3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": item["object_key"]}, ExpiresIn=3600)
+        segments = []
+        for segment in item.get("segments", []):
+            play_url = S3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": segment["object_key"]}, ExpiresIn=3600)
+            segments.append({
+                "index": int(segment["index"]),
+                "anchor_seconds": float(segment["anchor_seconds"]),
+                "duration_seconds": float(segment["duration_seconds"]),
+                "play_url": play_url,
+            })
         duration = float(item.get("duration_seconds", 0))
         original_duration = float(item.get("original_duration_seconds", 0))
         items.append({
             "response_id": item["response_id"], "recording_id": recording_id,
             "self_id": item["self_id"], "duration_seconds": duration,
-            "anchors_seconds": [float(value) for value in item.get("anchors_seconds", [])],
-            "created_at": item["created_at"], "play_url": play_url,
+            "segments": segments, "created_at": item["created_at"],
             "is_short": duration <= original_duration,
         })
     return response(200, {"items": items})

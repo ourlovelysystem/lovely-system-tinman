@@ -4,7 +4,8 @@
   const mode=location.pathname.toLowerCase().includes('appeal')?'appeal':'message';
   let recorder=null,stream=null,chunks=[],blob=null,blobUrl='',startedAt=0,timer=0;
   let audioContext=null,analyser=null,meterFrame=0;
-  let responseSession=null;
+  let responseSession=null,interleavedPlayback=null;
+  const responseIndex=new Map();
 
   function responseNotice(id,message,error=false){
     const node=document.querySelector(`[data-response-notice="${CSS.escape(id)}"]`);
@@ -97,13 +98,14 @@
 
   function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function responseMarkup(item,responses){
+    responses.forEach(reply=>responseIndex.set(reply.response_id,reply));
     const responseCards=responses.length?responses.map(reply=>`
       <article class="reply-card ${reply.is_short?'short-response':''}">
         <div class="reply-meta">
-          <div><strong>${escapeHtml(reply.self_id)}</strong><span>${format(reply.duration_seconds)}</span></div>
+          <div><strong>${escapeHtml(reply.self_id)}</strong><span>${format(reply.duration_seconds)} spoken</span></div>
           ${reply.is_short?'<span class="duration-verdict" title="Response does not exceed the original recording" aria-label="Response does not exceed the original recording">👎</span>':''}
         </div>
-        <audio controls preload="none" src="${escapeHtml(reply.play_url)}"></audio>
+        <button class="interleaved-button primary" data-play-interleaved="${escapeHtml(reply.response_id)}">▶ Play interleaved result</button>
       </article>`).join(''):'<p class="empty response-empty">No audio responses yet.</p>';
     return `<article class="thread" data-recording-id="${escapeHtml(item.recording_id)}">
       <div class="thread-grid">
@@ -152,61 +154,91 @@
     composer.hidden=!composer.hidden;
     if(composer.hidden)return;
     const source=thread.querySelector('.source-audio');
-    responseSession={recordingId,thread,composer,source,recorder:null,stream:null,chunks:[],blob:null,spokenMs:0,commentStarted:0,anchors:[]};
+    responseSession={recordingId,thread,composer,source,recorder:null,stream:null,clips:[],spokenMs:0,commentStarted:0,commentAnchor:0};
     responseNotice(recordingId,'Play the original. Insert a comment wherever you want to answer.');
   }
 
   async function startResponseComment(session){
     try{
       if(!session.stream)session.stream=await navigator.mediaDevices.getUserMedia({audio:true});
-      if(!session.recorder){
-        const preferred=['audio/webm;codecs=opus','audio/mp4'].find(MediaRecorder.isTypeSupported)||'';
-        session.recorder=new MediaRecorder(session.stream,preferred?{mimeType:preferred}:undefined);
-        session.recorder.ondataavailable=e=>{if(e.data.size)session.chunks.push(e.data)};
-        session.recorder.start();
-      }else if(session.recorder.state==='paused')session.recorder.resume();
+      const preferred=['audio/webm;codecs=opus','audio/mp4'].find(MediaRecorder.isTypeSupported)||'';
+      session.recorder=new MediaRecorder(session.stream,preferred?{mimeType:preferred}:undefined);
+      session.pendingChunks=[];
+      session.recorder.ondataavailable=e=>{if(e.data.size)session.pendingChunks.push(e.data)};
       session.source.pause();
+      session.commentAnchor=Math.round((session.source.currentTime||0)*10)/10;
       session.commentStarted=Date.now();
-      session.anchors.push(Math.round((session.source.currentTime||0)*10)/10);
+      session.recorder.start();
       session.composer.querySelector('.comment-button').disabled=true;
       session.composer.querySelector('.stop-comment-button').disabled=false;
-      responseNotice(session.recordingId,`Recording comment at ${format(session.source.currentTime)}…`);
+      responseNotice(session.recordingId,`Recording insertion at ${format(session.commentAnchor)}…`);
     }catch(error){responseNotice(session.recordingId,`Microphone unavailable: ${error.message}`,true)}
   }
 
-  function stopResponseComment(session){
+  async function stopResponseComment(session){
     if(!session.recorder||session.recorder.state!=='recording')return;
-    session.recorder.pause();
-    session.spokenMs+=Date.now()-session.commentStarted;
+    const durationMs=Date.now()-session.commentStarted;
+    const stopped=new Promise(resolve=>session.recorder.addEventListener('stop',resolve,{once:true}));
+    session.recorder.stop();await stopped;
+    const clip=new Blob(session.pendingChunks,{type:session.recorder.mimeType||'audio/webm'});
+    session.clips.push({blob:clip,anchor_seconds:session.commentAnchor,duration_seconds:Math.round(durationMs/100)/10});
+    session.spokenMs+=durationMs;session.recorder=null;
     session.composer.querySelector('.response-duration').textContent=format(session.spokenMs/1000);
     session.composer.querySelector('.comment-button').disabled=false;
     session.composer.querySelector('.stop-comment-button').disabled=true;
     session.composer.querySelector('.submit-response-button').disabled=false;
-    responseNotice(session.recordingId,'Comment inserted. Continuing the original.');
+    responseNotice(session.recordingId,'Insertion captured. Continuing the original.');
     session.source.play().catch(()=>{});
   }
 
   async function submitResponse(session){
     const selfId=session.composer.querySelector('.response-self-id').value.trim();
     if(!selfId)return responseNotice(session.recordingId,'Self-identification is required.',true);
-    if(!session.recorder||!session.spokenMs)return responseNotice(session.recordingId,'Insert at least one spoken comment.',true);
-    if(session.recorder.state==='recording')stopResponseComment(session);
+    if(session.recorder?.state==='recording')await stopResponseComment(session);
+    if(!session.clips.length)return responseNotice(session.recordingId,'Insert at least one spoken comment.',true);
     session.composer.querySelector('.submit-response-button').disabled=true;
-    responseNotice(session.recordingId,'Preparing response…');
-    await new Promise(resolve=>{session.recorder.addEventListener('stop',resolve,{once:true});session.recorder.stop()});
-    session.blob=new Blob(session.chunks,{type:session.recorder.mimeType||'audio/webm'});
+    responseNotice(session.recordingId,'Preparing interleaved response…');
     try{
       const duration=Math.round(session.spokenMs/100)/10;
-      const init=await api('/responses/init',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({recording_id:session.recordingId,self_id:selfId,content_type:session.blob.type||'audio/webm',duration_seconds:duration,anchors_seconds:session.anchors})});
-      const upload=await fetch(init.upload_url,{method:'PUT',headers:{'content-type':session.blob.type||'audio/webm'},body:session.blob});
-      if(!upload.ok)throw new Error(`Audio upload failed: ${upload.status}`);
+      const segments=session.clips.map(clip=>({anchor_seconds:clip.anchor_seconds,duration_seconds:clip.duration_seconds,content_type:clip.blob.type||'audio/webm'}));
+      const init=await api('/responses/init',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({recording_id:session.recordingId,self_id:selfId,duration_seconds:duration,segments})});
+      await Promise.all(session.clips.map(async(clip,index)=>{
+        const upload=await fetch(init.segments[index].upload_url,{method:'PUT',headers:{'content-type':clip.blob.type||'audio/webm'},body:clip.blob});
+        if(!upload.ok)throw new Error(`Audio insertion ${index+1} upload failed: ${upload.status}`);
+      }));
       await api('/responses/complete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({response_id:init.response_id,recording_id:session.recordingId})});
       session.stream?.getTracks().forEach(track=>track.stop());responseSession=null;
-      responseNotice(session.recordingId,'Response submitted.');await loadRecordings();
+      responseNotice(session.recordingId,'Interleaved response submitted.');await loadRecordings();
     }catch(error){responseNotice(session.recordingId,error.message,true);session.composer.querySelector('.submit-response-button').disabled=false}
   }
 
+  function waitFor(target,event){return new Promise(resolve=>target.addEventListener(event,resolve,{once:true}))}
+  async function playInterleaved(responseId,button){
+    if(interleavedPlayback){
+      interleavedPlayback.source.pause();interleavedPlayback.clip?.pause();
+      interleavedPlayback.button.textContent='▶ Play interleaved result';
+      if(interleavedPlayback.responseId===responseId){interleavedPlayback=null;return}
+    }
+    const reply=responseIndex.get(responseId),thread=button.closest('.thread'),source=thread.querySelector('.source-audio');
+    if(!reply||!source)return;
+    const state={responseId,button,source,clip:null,cancelled:false};interleavedPlayback=state;
+    button.textContent='■ Stop interleaved result';source.currentTime=0;
+    const segments=(reply.segments||[]).slice().sort((a,b)=>a.anchor_seconds-b.anchor_seconds);
+    for(const segment of segments){
+      if(state.cancelled||interleavedPlayback!==state)return;
+      if(source.currentTime>segment.anchor_seconds)source.currentTime=0;
+      await source.play();
+      while(source.currentTime<segment.anchor_seconds&&!source.ended&&interleavedPlayback===state)await Promise.race([waitFor(source,'timeupdate'),waitFor(source,'ended')]);
+      source.pause();if(interleavedPlayback!==state)return;
+      state.clip=new Audio(segment.play_url);await state.clip.play();await waitFor(state.clip,'ended');state.clip=null;
+    }
+    if(interleavedPlayback===state){await source.play();await waitFor(source,'ended')}
+    if(interleavedPlayback===state){button.textContent='▶ Play interleaved result';interleavedPlayback=null}
+  }
+
   $('recordings').onclick=e=>{
+    const interleaved=e.target.closest('[data-play-interleaved]');
+    if(interleaved)return playInterleaved(interleaved.dataset.playInterleaved,interleaved);
     const respond=e.target.closest('[data-respond-to]');
     if(respond)return openResponseComposer(respond.dataset.respondTo);
     const composer=e.target.closest('.response-composer');
@@ -217,7 +249,7 @@
   };
 
   async function loadRecordings(){
-    closeResponseSession();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
+    closeResponseSession();responseIndex.clear();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
     try{
       const data=await api(`/recordings?message_type=${encodeURIComponent(mode)}&limit=50`);
       const responses=await Promise.all(data.items.map(item=>getResponses(item.recording_id)));

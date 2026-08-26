@@ -26,3 +26,5 @@ header{grid-column:1/-1;width:min(980px,100%);padding:0 8px;color:white;text-sha
 .response-notice{min-height:1.2em;margin:5px 0 0;font-size:11px;color:var(--muted)}.response-notice.error{color:var(--danger)}
 .future-cell,.transcript-cell{display:flex;flex-direction:column;justify-content:space-between;color:#667176;background:rgba(190,199,201,.55);border-style:dashed}.transcript-cell{opacity:.72}
 @media(max-width:760px){.thread-grid{grid-template-columns:minmax(280px,88vw) minmax(280px,88vw) 110px 190px}}
+
+.interleaved-button{width:100%;margin-top:8px;text-align:left}.reply-card audio{display:none}
