@@ -484,3 +484,55 @@ body.about-page{
   position:relative;
   z-index:2;
 }
+
+
+/* Deterministic About hero: the normal-flow image sizes the grid. */
+.about-page .about-hero{
+  position:relative;
+  display:grid;
+  width:100%;
+  min-height:0;
+  padding:0;
+  overflow:hidden;
+  isolation:auto;
+  background:#080b09!important;
+}
+.about-page .about-hero-image{
+  position:static;
+  inset:auto;
+  grid-area:1 / 1;
+  z-index:0;
+  width:100%;
+  height:auto;
+  max-width:none;
+  object-fit:contain;
+  object-position:center;
+}
+.about-page .about-hero::after{
+  grid-area:1 / 1;
+  z-index:1;
+}
+.about-page .about-hero-copy{
+  grid-area:1 / 1;
+  z-index:2;
+  align-self:center;
+  width:min(36rem,48vw);
+  margin-left:max(24px,calc((100vw - 1160px)/2));
+  color:#fff;
+  text-shadow:0 2px 4px #000,0 0 18px #000;
+}
+.about-page .about-hero-copy h1,
+.about-page .about-hero-copy .lede{
+  max-width:36rem;
+}
+@media(max-width:760px){
+  .about-page .about-hero-copy{
+    align-self:end;
+    width:calc(100% - 48px);
+    margin:0 24px 36px;
+  }
+  .about-page .about-hero-copy h1,
+  .about-page .about-hero-copy .lede{
+    max-width:100%;
+  }
+}
