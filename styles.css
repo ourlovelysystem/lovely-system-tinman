@@ -31,3 +31,5 @@ header{grid-column:1/-1;width:min(980px,100%);padding:0 8px;color:white;text-sha
 
 .comment-button{touch-action:none;user-select:none;-webkit-user-select:none}
 .comment-button.annotating{background:linear-gradient(#ffb0a8,#c84338);border-color:#7e1f18;color:#180604;box-shadow:inset 0 1px 0 #ffd8d4,0 0 0 3px rgba(157,38,30,.22)}
+
+.common-meter,.recorder{box-shadow:inset 0 2px 0 #fff,inset 2px 0 0 #ffffff99,inset 0 -3px 7px #5e686d77}
