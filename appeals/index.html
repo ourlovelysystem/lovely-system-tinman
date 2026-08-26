@@ -1,1 +1,22 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tinman — Appeals</title><link rel="stylesheet" href="/styles.css"></head><body><main><header><p class="eyebrow">TINMAN / OUR LOVELY SYSTEM</p><h1>Leave a voice message.</h1><p id="modeCopy">Record an appeal. Say what happened in your own voice.</p></header><section class="panel common-meter" aria-labelledby="meterHeading"><div class="meter-head"><h2 id="meterHeading">Audiometer</h2><span id="meterMode">Ready</span></div><canvas id="visualizer" aria-label="Shared live microphone level" role="img"></canvas></section><div class="meter-space" aria-hidden="true"></div><section class="panel recorder" aria-labelledby="recordHeading"><h2 id="recordHeading">Record</h2><label for="selfId">Public self-identification</label><input id="selfId" maxlength="80" autocomplete="nickname" placeholder="How should this recording identify you?"><div class="controls"><button id="recordButton" class="primary">Record</button><button id="stopButton" disabled>Stop</button><button id="rewindButton" disabled>−10 seconds</button><button id="playButton" disabled>Replay</button><button id="forwardButton" disabled>+10 seconds</button></div><div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div><audio id="preview" controls hidden></audio><button id="submitButton" class="primary submit" disabled>Submit recording</button><p id="notice" role="status" aria-live="polite"></p></section><section class="panel browser" aria-labelledby="browseHeading"><div class="browserHead"><div><h2 id="browseHeading">Recording browser</h2><p>Newest first.</p></div><button id="refreshButton">Refresh</button></div><div id="recordings"><p class="empty">Loading recordings…</p></div></section></main><script src="/config.js"></script><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tinman — Appeals</title><link rel="stylesheet" href="/styles.css"></head>
+<body><main>
+  <section class="panel common-meter" aria-labelledby="meterHeading">
+    <h2 id="meterHeading" class="sr-only">Audiometer</h2>
+    <div class="meter-channel"><div class="meter-head"><strong>Microphone</strong><span id="micMeterMode">Ready</span></div><canvas id="micVisualizer" aria-label="Live microphone level" role="img"></canvas></div>
+    <div class="meter-channel"><div class="meter-head"><strong>Playback</strong><span id="playMeterMode">Ready</span></div><canvas id="playVisualizer" aria-label="Live playback level" role="img"></canvas></div>
+  </section>
+  <section class="panel recorder" aria-labelledby="recordHeading">
+    <h2 id="recordHeading">Record</h2>
+    <div class="record-field"><label for="selfId">Public self-identification</label><input id="selfId" maxlength="80" autocomplete="nickname" placeholder="How should this recording identify you?"></div>
+    <div class="record-field"><label for="title">Title</label><input id="title" maxlength="120" placeholder="Optional recording title"></div>
+    <div class="record-actions"><div class="controls"><button id="recordButton" class="primary">Record</button><button id="stopButton" disabled>Stop</button><button id="rewindButton" class="jump" disabled aria-label="Jump back 10 seconds" title="Jump back 10 seconds">↶</button><button id="playButton" disabled>Replay</button><button id="forwardButton" class="jump" disabled aria-label="Jump forward 10 seconds" title="Jump forward 10 seconds">↷</button></div><div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div></div>
+    <audio id="preview" controls crossorigin="anonymous" hidden></audio>
+    <div class="record-submit"><button id="submitButton" class="primary submit" disabled>Submit recording</button><p id="notice" role="status" aria-live="polite"></p></div>
+  </section>
+  <div class="scroll-workspace">
+    <header><p class="eyebrow">TINMAN / OUR LOVELY SYSTEM</p><h1>Leave a voice message.</h1><p id="modeCopy">Record an appeal. Say what happened in your own voice.</p></header>
+    <section class="panel browser" aria-labelledby="browseHeading"><div class="browserHead"><div><h2 id="browseHeading">Recording browser</h2><p>Newest first.</p></div><button id="refreshButton">Refresh</button></div><div id="recordings"><p class="empty">Loading recordings…</p></div></section>
+  </div>
+</main><script src="/config.js"></script><script src="/app.js"></script></body></html>

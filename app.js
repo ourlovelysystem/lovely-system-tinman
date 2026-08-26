@@ -4,6 +4,8 @@
   const mode=location.pathname.toLowerCase().includes('appeal')?'appeal':'message';
   let recorder=null,stream=null,chunks=[],blob=null,blobUrl='',startedAt=0,timer=0;
   let audioContext=null,analyser=null,meterFrame=0,meterOwner=null;
+  let playbackContext=null,playbackAnalyser=null,playbackFrame=0,currentPlayback=null;
+  const playbackSources=new WeakMap();
   let responseSession=null,interleavedPlayback=null;
   const responseIndex=new Map();
 
@@ -27,33 +29,55 @@
   function previewReady(){
     $('preview').hidden=false;$('playButton').disabled=false;$('rewindButton').disabled=false;$('forwardButton').disabled=false;$('submitButton').disabled=false;
   }
-  function drawIdleMeter(){
-    const canvas=$('visualizer'),dpr=devicePixelRatio||1;
+  function sizeCanvas(canvas){
+    const dpr=devicePixelRatio||1;
     canvas.width=Math.max(1,Math.floor(canvas.clientWidth*dpr));canvas.height=Math.max(1,Math.floor(canvas.clientHeight*dpr));
-    const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
+    const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return ctx;
+  }
+  function drawIdle(canvas){
+    const ctx=sizeCanvas(canvas);ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
     ctx.strokeStyle='#394248';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,canvas.clientHeight/2+.5);ctx.lineTo(canvas.clientWidth,canvas.clientHeight/2+.5);ctx.stroke();
   }
-  function startMeter(sourceStream,owner,label){
-    if(audioContext){cancelAnimationFrame(meterFrame);audioContext.close();audioContext=null}
-    meterOwner=owner;$('meterMode').textContent=label;
-    audioContext=new (window.AudioContext||window.webkitAudioContext)();
-    analyser=audioContext.createAnalyser();analyser.fftSize=256;analyser.smoothingTimeConstant=.72;
-    audioContext.createMediaStreamSource(sourceStream).connect(analyser);
-    const data=new Uint8Array(analyser.frequencyBinCount),canvas=$('visualizer'),ctx=canvas.getContext('2d');
+  function drawIdleMeter(){drawIdle($('micVisualizer'));drawIdle($('playVisualizer'))}
+  function drawAnalyser(canvas,meter,getFrame,setFrame){
+    const data=new Uint8Array(meter.frequencyBinCount),ctx=canvas.getContext('2d');
     const draw=()=>{
-      meterFrame=requestAnimationFrame(draw);analyser.getByteFrequencyData(data);
+      setFrame(requestAnimationFrame(draw));meter.getByteFrequencyData(data);
       const w=canvas.clientWidth,h=canvas.clientHeight,dpr=devicePixelRatio||1;
       if(canvas.width!==Math.floor(w*dpr)||canvas.height!==Math.floor(h*dpr)){canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
       ctx.fillStyle='#080a0b';ctx.fillRect(0,0,w,h);
-      const bars=48,gap=3,barWidth=Math.max(2,(w-gap*(bars-1))/bars);
-      for(let i=0;i<bars;i++){
-        const value=data[Math.floor(i*data.length/bars)]/255,barHeight=Math.max(2,value*(h-12));
-        ctx.fillStyle=value>.82?'#ff796f':value>.55?'#f1c75b':'#d7e0e4';
-        ctx.fillRect(i*(barWidth+gap),(h-barHeight)/2,barWidth,barHeight);
-      }
+      const bars=36,gap=3,barWidth=Math.max(2,(w-gap*(bars-1))/bars);
+      for(let i=0;i<bars;i++){const value=data[Math.floor(i*data.length/bars)]/255,barHeight=Math.max(2,value*(h-10));ctx.fillStyle=value>.82?'#ff796f':value>.55?'#f1c75b':'#d7e0e4';ctx.fillRect(i*(barWidth+gap),(h-barHeight)/2,barWidth,barHeight)}
     };draw();
   }
-  function stopMeter(owner){if(owner&&meterOwner!==owner)return;cancelAnimationFrame(meterFrame);meterFrame=0;analyser=null;if(audioContext){audioContext.close();audioContext=null}meterOwner=null;$('meterMode').textContent='Ready';drawIdleMeter()}
+  function startMeter(sourceStream,owner,label){
+    if(audioContext){cancelAnimationFrame(meterFrame);audioContext.close();audioContext=null}
+    meterOwner=owner;$('micMeterMode').textContent=label;
+    audioContext=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=audioContext.createAnalyser();analyser.fftSize=256;analyser.smoothingTimeConstant=.72;
+    audioContext.createMediaStreamSource(sourceStream).connect(analyser);
+    drawAnalyser($('micVisualizer'),analyser,()=>meterFrame,value=>meterFrame=value);
+  }
+  function stopMeter(owner){
+    if(owner&&meterOwner!==owner)return;cancelAnimationFrame(meterFrame);meterFrame=0;analyser=null;
+    if(audioContext){audioContext.close();audioContext=null}
+    meterOwner=null;$('micMeterMode').textContent='Ready';drawIdle($('micVisualizer'));
+  }
+  function startPlaybackMeter(audio){
+    try{
+      if(!playbackContext){playbackContext=new (window.AudioContext||window.webkitAudioContext)();playbackAnalyser=playbackContext.createAnalyser();playbackAnalyser.fftSize=256;playbackAnalyser.smoothingTimeConstant=.72;playbackAnalyser.connect(playbackContext.destination)}
+      if(!playbackSources.has(audio)){const source=playbackContext.createMediaElementSource(audio);source.connect(playbackAnalyser);playbackSources.set(audio,source)}
+      playbackContext.resume();currentPlayback=audio;cancelAnimationFrame(playbackFrame);$('playMeterMode').textContent='Playing';
+      drawAnalyser($('playVisualizer'),playbackAnalyser,()=>playbackFrame,value=>playbackFrame=value);
+    }catch(error){$('playMeterMode').textContent='Unavailable';drawIdle($('playVisualizer'))}
+  }
+  function stopPlaybackMeter(audio,state='Ready'){
+    if(currentPlayback!==audio)return;cancelAnimationFrame(playbackFrame);playbackFrame=0;currentPlayback=null;$('playMeterMode').textContent=state;drawIdle($('playVisualizer'));
+  }
+  document.addEventListener('play',event=>{if(event.target instanceof HTMLAudioElement)startPlaybackMeter(event.target)},true);
+  document.addEventListener('pause',event=>{if(event.target instanceof HTMLAudioElement&&!event.target.ended)stopPlaybackMeter(event.target,'Paused')},true);
+  document.addEventListener('ended',event=>{if(event.target instanceof HTMLAudioElement)stopPlaybackMeter(event.target)},true);
+
   async function api(path,options={}){
     if(!API)throw new Error('API URL is not configured.');
     const response=await fetch(API+path,options);
@@ -114,7 +138,7 @@
         <section class="thread-cell original-cell">
           <div class="column-label">Original</div>
           <div class="meta"><div><div class="recordingTitle">${escapeHtml(item.title||'Untitled recording')}</div><div class="who">${escapeHtml(item.self_id)}</div><div class="details">${escapeHtml(item.message_type)} · ${format(item.duration_seconds)}</div></div><time class="when">${new Date(item.created_at).toLocaleString()}</time></div>
-          <audio class="source-audio" controls preload="none" src="${escapeHtml(item.play_url)}"></audio>
+          <audio class="source-audio" controls preload="none" crossorigin="anonymous" src="${escapeHtml(item.play_url)}"></audio>
         </section>
         <section class="thread-cell response-cell">
           <div class="column-label">+1 Audio responses</div>
@@ -234,7 +258,7 @@
       await source.play();
       while(source.currentTime<segment.anchor_seconds&&!source.ended&&interleavedPlayback===state)await Promise.race([waitFor(source,'timeupdate'),waitFor(source,'ended')]);
       source.pause();if(interleavedPlayback!==state)return;
-      state.clip=new Audio(segment.play_url);await state.clip.play();await waitFor(state.clip,'ended');state.clip=null;
+      state.clip=new Audio();state.clip.crossOrigin='anonymous';state.clip.src=segment.play_url;await state.clip.play();await waitFor(state.clip,'ended');state.clip=null;
     }
     if(interleavedPlayback===state){await source.play();await waitFor(source,'ended')}
     if(interleavedPlayback===state){button.textContent='▶ Play interleaved result';interleavedPlayback=null}
