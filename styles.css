@@ -143,3 +143,7 @@ body.about-page{overflow:auto}
   .common-meter>.recorder .record-field input{font-size:12px}
   .common-meter>.recorder .record-submit button{font-size:11px;padding:6px}
 }
+
+
+/* A completed recording must expose its save action */
+.common-meter>.recorder #preview:not([hidden])~.record-submit{visibility:visible}
