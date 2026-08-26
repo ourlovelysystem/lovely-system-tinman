@@ -193,3 +193,14 @@ body.about-page{overflow:auto}
 .quarantine-badge{font-size:19px;line-height:1;cursor:help;filter:drop-shadow(0 1px 0 #fff)}
 .reply-card:has(.quarantine-badge){outline:2px solid rgba(103,88,12,.45);outline-offset:-2px}
 .search-strip label:has(#searchQuarantine) select{width:96px}
+
+
+/* About page: Policy Vault */
+body.about-page{
+  background-image:
+    linear-gradient(90deg,rgba(0,0,0,.58) 0%,rgba(0,0,0,.28) 38%,rgba(0,0,0,.08) 68%,rgba(0,0,0,.24) 100%),
+    url('/assets/tinman-policy-vault.png');
+  background-position:center;
+  background-size:cover;
+  background-attachment:fixed;
+}
