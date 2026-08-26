@@ -1,18 +1,17 @@
 # Tinman
 
-Tinman is a voice-message application for Our Lovely System.
+Tinman is the preferred outward-facing contact surface for Our Lovely System. Its voice recordings are outwardly inspectable.
 
 The current increment deliberately contains only the functional core:
 
 - public self-identification
+- optional recording title
 - browser microphone recording
 - stop, replay, and ten-second seek controls
 - direct upload to private S3 storage through a short-lived URL
 - durable recording metadata in DynamoDB
 - newest-first recording browser with playback
 - `/appeals/` route tagging recordings as appeals
-
-Rust, oiling, axes, animation, classification, transcription, response tracks, and accolades are outside this increment. They remain in Git history and can return only after the recording path works end to end.
 
 ## Deployment
 

@@ -36,6 +36,7 @@ def now_iso():
 
 def init_recording(data):
     self_id = str(data.get("self_id", "")).strip()
+    title = str(data.get("title", "")).strip()
     message_type = str(data.get("message_type", "appeal")).lower()
     content_type = str(data.get("content_type", "audio/webm")).lower()
     try:
@@ -44,6 +45,8 @@ def init_recording(data):
         duration = 0
     if not self_id or len(self_id) > 80:
         return response(400, {"error": "self_id must contain 1–80 characters"})
+    if len(title) > 120:
+        return response(400, {"error": "title must not exceed 120 characters"})
     if message_type not in ALLOWED_TYPES:
         return response(400, {"error": "unsupported message_type"})
     if content_type not in ALLOWED_CONTENT_TYPES:
@@ -54,7 +57,7 @@ def init_recording(data):
     object_key = f"recordings/{message_type}/{recording_id}"
     item = {
         "pk": f"TYPE#{message_type}", "sk": f"{created_at}#{recording_id}",
-        "recording_id": recording_id, "self_id": self_id, "message_type": message_type,
+        "recording_id": recording_id, "self_id": self_id, "title": title, "message_type": message_type,
         "content_type": content_type, "duration_seconds": Decimal(str(duration)),
         "created_at": created_at, "object_key": object_key, "status": "pending",
     }
@@ -116,7 +119,7 @@ def list_recordings(event):
             continue
         play_url = S3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": item["object_key"]}, ExpiresIn=3600)
         items.append({
-            "recording_id": item["recording_id"], "self_id": item["self_id"],
+            "recording_id": item["recording_id"], "self_id": item["self_id"], "title": item.get("title", ""),
             "message_type": item["message_type"], "duration_seconds": float(item.get("duration_seconds", 0)),
             "created_at": item["created_at"], "play_url": play_url,
         })

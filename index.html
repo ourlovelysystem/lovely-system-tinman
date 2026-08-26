@@ -18,6 +18,8 @@
       <h2 id="recordHeading">Record</h2>
       <label for="selfId">Public self-identification</label>
       <input id="selfId" maxlength="80" autocomplete="nickname" placeholder="How should this recording identify you?">
+      <label for="title">Title</label>
+      <input id="title" maxlength="120" placeholder="Optional recording title">
       <div class="controls">
         <button id="recordButton" class="primary">Record</button>
         <button id="stopButton" disabled>Stop</button>
@@ -26,6 +28,7 @@
         <button id="forwardButton" disabled>+10 seconds</button>
       </div>
       <div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div>
+      <canvas id="visualizer" aria-label="Live microphone level" role="img"></canvas>
       <audio id="preview" controls hidden></audio>
       <button id="submitButton" class="primary submit" disabled>Submit recording</button>
       <p id="notice" role="status" aria-live="polite"></p>
