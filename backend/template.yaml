@@ -14,6 +14,23 @@ Globals:
         RECORDINGS_BUCKET: !Ref RecordingsBucket
 
 Resources:
+  # Preserved as historical evidence from the earlier Tinman increment.
+  # The voice application does not read or write this table.
+  TinmanTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
   RecordingTable:
     Type: AWS::DynamoDB::Table
     Properties:
