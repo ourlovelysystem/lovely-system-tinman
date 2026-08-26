@@ -379,5 +379,16 @@
     document.querySelectorAll('.search-strip input').forEach(input=>input.value='');
     $('searchTranscript').value='any';$('searchSpeaker').value='any';$('searchInquiry').value='any';$('searchSensitive').value='any';$('searchQuarantine').value='any';applySearch();
   };
+  function setSearchCollapsed(collapsed){
+    document.body.classList.toggle('search-collapsed',collapsed);
+    $('toggleSearch').textContent=collapsed?'Show filters':'Hide filters';
+    $('toggleSearch').setAttribute('aria-expanded',String(!collapsed));
+    try{localStorage.setItem('tinman-search-collapsed',collapsed?'1':'0')}catch(_){}
+  }
+  let searchCollapsed=false;
+  try{searchCollapsed=localStorage.getItem('tinman-search-collapsed')==='1'}catch(_){}
+  setSearchCollapsed(searchCollapsed);
+  $('toggleSearch').onclick=()=>setSearchCollapsed(!document.body.classList.contains('search-collapsed'));
+
   $('refreshButton').onclick=loadRecordings;drawIdleMeter();addEventListener('resize',drawIdleMeter);loadRecordings();
 })();

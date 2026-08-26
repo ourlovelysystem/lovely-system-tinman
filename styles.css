@@ -355,3 +355,98 @@ body.about-page::before{
     padding:24px 12px 90px;
   }
 }
+
+
+/* Search rail collapse, edge recovery, and deterministic About hero. */
+:root{
+  --deck-side:12px;
+}
+.search-strip .search-toggle{
+  width:100%;
+  order:-1;
+}
+body.search-collapsed{
+  --search-rail-width:46px;
+}
+body.search-collapsed .search-strip{
+  padding:7px 5px;
+  overflow:hidden;
+}
+body.search-collapsed .search-strip::before,
+body.search-collapsed .search-strip > :not(.search-toggle){
+  display:none;
+}
+body.search-collapsed .search-strip .search-toggle{
+  display:block;
+  width:34px;
+  min-width:34px;
+  height:auto;
+  padding:8px 5px;
+  writing-mode:vertical-rl;
+  transform:rotate(180deg);
+  white-space:nowrap;
+}
+@media(max-width:760px){
+  body.search-collapsed{
+    --search-rail-width:0px;
+  }
+  body.search-collapsed .search-strip{
+    width:46px;
+    right:auto;
+  }
+  body.search-collapsed .scroll-workspace{
+    top:var(--workspace-top);
+  }
+}
+
+/* The About artwork is an explicit hero surface, independent of body backgrounds. */
+body.about-page,
+body.about-page::before{
+  background:#080b09;
+}
+body.about-page::before{
+  display:none;
+}
+.about-page main{
+  width:100%;
+  margin:0;
+  padding:0 0 88px;
+}
+.about-page .about-shell{
+  display:block;
+}
+.about-page .about-hero{
+  width:100%;
+  max-width:none;
+  min-height:100vh;
+  margin:0;
+  padding:
+    48px
+    max(24px,calc((100vw - 1160px)/2 + 52vw))
+    48px
+    max(24px,calc((100vw - 1160px)/2));
+  justify-content:center;
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.67) 0%,rgba(0,0,0,.40) 36%,rgba(0,0,0,.02) 69%,rgba(0,0,0,.13) 100%),
+    url('/assets/tinman-policy-vault.png') center/cover no-repeat;
+}
+.about-page .about-grid{
+  width:min(1160px,calc(100% - 48px));
+  margin:28px auto 0;
+}
+.about-page .about-footer{
+  width:min(1160px,calc(100% - 48px));
+  margin:24px auto 0;
+}
+@media(max-width:760px){
+  .about-page .about-hero{
+    min-height:82vh;
+    padding:32px 24px 42px;
+    justify-content:flex-end;
+    background-position:64% center;
+  }
+  .about-page .about-grid,
+  .about-page .about-footer{
+    width:calc(100% - 24px);
+  }
+}
