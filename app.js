@@ -135,9 +135,10 @@
   function responseMarkup(item,responses,transcript){
     responses.forEach(reply=>responseIndex.set(reply.response_id,reply));
     const responseCards=responses.length?responses.map(reply=>`
-      <article class="reply-card ${reply.is_short?'short-response':''}">
+      <article class="reply-card ${reply.is_short?'short-response':''} ${reply.speaks_for_our_lovely_system?'system-speaker':''}">
         <div class="reply-meta">
           <div><strong>${escapeHtml(reply.self_id)}</strong><span>${format(reply.duration_seconds)} spoken</span></div>
+          ${reply.speaks_for_our_lovely_system?'<span class="system-speaker-badge" title="This responder says: I speak for Our Lovely System." aria-label="Declared speaker for Our Lovely System">🫀</span>':''}
           ${reply.is_short?'<span class="duration-verdict" title="Response does not exceed the original recording" aria-label="Response does not exceed the original recording">👎</span>':''}
         </div>
         <button class="interleaved-button primary" data-play-interleaved="${escapeHtml(reply.response_id)}">▶ Play interleaved result</button>
@@ -327,16 +328,25 @@
     const min=$('searchMinResponses').value===''?null:Number($('searchMinResponses').value);
     const max=$('searchMaxResponses').value===''?null:Number($('searchMaxResponses').value);
     const transcript=$('searchTranscript').value;
+    const speaker=$('searchSpeaker').value;
     const visible=recordingResults.filter(row=>{
       const time=new Date(row.item.created_at).getTime(),count=row.responses.length,present=transcriptIsPresent(row.transcript);
+      const declared=row.responses.some(reply=>reply.speaks_for_our_lovely_system);
       return (from===null||time>=from)&&(to===null||time<=to)&&
         (!title||String(row.item.title||'').toLowerCase().includes(title))&&
         (!author||String(row.item.self_id||'').toLowerCase().includes(author))&&
         (min===null||count>=min)&&(max===null||count<=max)&&
-        (transcript==='any'||(transcript==='present'&&present)||(transcript==='null'&&!present));
+        (transcript==='any'||(transcript==='present'&&present)||(transcript==='null'&&!present))&&
+        (speaker==='any'||(speaker==='declared'&&declared)||(speaker==='absent'&&!declared));
     });
     $('recordings').innerHTML=visible.length?visible.map(row=>responseMarkup(row.item,row.responses,row.transcript)).join(''):'<p class="empty">No recordings match these controls.</p>';
     $('searchCount').textContent=`${visible.length} / ${recordingResults.length}`;
+  }
+  function updateMetrics(){
+    const zero=recordingResults.filter(row=>row.responses.length===0).length;
+    const insufficient=recordingResults.filter(row=>row.responses.filter(reply=>reply.speaks_for_our_lovely_system).length<3).length;
+    $('zeroResponseMetric').textContent=zero;
+    $('insufficientAckMetric').textContent=insufficient;
   }
   async function loadRecordings(){
     closeResponseSession();responseIndex.clear();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
@@ -347,7 +357,7 @@
         Promise.all(data.items.map(item=>getTranscript(item.recording_id)))
       ]);
       recordingResults=data.items.map((item,index)=>({item,responses:responses[index],transcript:transcripts[index]}));
-      applySearch();
+      updateMetrics();applySearch();
     }catch(error){$('recordings').innerHTML=`<p class="empty">Recording browser unavailable: ${escapeHtml(error.message)}</p>`}
   }
   document.querySelectorAll('.search-strip input,.search-strip select').forEach(control=>{
@@ -355,7 +365,7 @@
   });
   $('clearSearch').onclick=()=>{
     document.querySelectorAll('.search-strip input').forEach(input=>input.value='');
-    $('searchTranscript').value='any';applySearch();
+    $('searchTranscript').value='any';$('searchSpeaker').value='any';applySearch();
   };
   $('refreshButton').onclick=loadRecordings;drawIdleMeter();addEventListener('resize',drawIdleMeter);loadRecordings();
 })();

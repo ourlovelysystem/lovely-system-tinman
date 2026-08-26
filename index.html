@@ -47,6 +47,7 @@
       <label>Responses ≥<input id="searchMinResponses" type="number" min="0" inputmode="numeric" placeholder="0"></label>
       <label>Responses ≤<input id="searchMaxResponses" type="number" min="0" inputmode="numeric" placeholder="Any"></label>
       <label>Transcript<select id="searchTranscript"><option value="any">Any</option><option value="present">Is not null</option><option value="null">Is null</option></select></label>
+      <label>System speaker<select id="searchSpeaker"><option value="any">Any</option><option value="declared">Declared</option><option value="absent">Not declared</option></select></label>
       <button id="clearSearch" type="button">Clear</button>
       <output id="searchCount" aria-live="polite"></output>
     </section>
@@ -63,7 +64,7 @@
         </div>
       </header>
       <section class="panel browser" aria-labelledby="browseHeading">
-        <div class="browserHead"><div><h2 id="browseHeading">Recording browser</h2><p>Newest first.</p></div><button id="refreshButton">Refresh</button></div>
+        <div class="browserHead"><div><h2 id="browseHeading">Recording browser</h2><p>Newest first.</p></div><div class="browser-metrics" aria-label="Loaded message metrics"><span title="Among loaded messages"><strong id="zeroResponseMetric">—</strong> zero responses</span><span title="Fewer than three declared speakers among loaded messages"><strong id="insufficientAckMetric">—</strong> insufficiently acknowledged</span></div><button id="refreshButton">Refresh</button></div>
         <div id="recordings"><p class="empty">Loading recordings…</p></div>
       </section>
     </div>

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 import uuid
 from datetime import datetime, timezone
@@ -211,13 +212,17 @@ def complete_response(data):
             total_size += head["ContentLength"]
     except S3.exceptions.ClientError:
         return response(409, {"error": "response audio insertion is not present"})
+    ack_jobs = start_acknowledgment_jobs(item)
     TABLE.update_item(
         Key={"pk": item["pk"], "sk": item["sk"]},
-        UpdateExpression="SET #status=:complete, completed_at=:completed, byte_size=:size",
+        UpdateExpression="SET #status=:complete, completed_at=:completed, byte_size=:size, ack_status=:ack, ack_jobs=:jobs",
         ExpressionAttributeNames={"#status": "status"},
-        ExpressionAttributeValues={":complete": "complete", ":completed": now_iso(), ":size": total_size},
+        ExpressionAttributeValues={
+            ":complete": "complete", ":completed": now_iso(), ":size": total_size,
+            ":ack": "processing", ":jobs": ack_jobs,
+        },
     )
-    return response(200, {"response_id": response_id, "status": "complete"})
+    return response(200, {"response_id": response_id, "status": "complete", "ack_status": "processing"})
 
 
 def list_responses(event):
@@ -243,6 +248,7 @@ def list_responses(event):
                 "duration_seconds": float(segment["duration_seconds"]),
                 "play_url": play_url,
             })
+        declaration = resolve_acknowledgment(item)
         duration = float(item.get("duration_seconds", 0))
         original_duration = float(item.get("original_duration_seconds", 0))
         items.append({
@@ -250,6 +256,8 @@ def list_responses(event):
             "self_id": item["self_id"], "duration_seconds": duration,
             "segments": segments, "created_at": item["created_at"],
             "is_short": duration <= original_duration,
+            "speaks_for_our_lovely_system": declaration["qualifies"],
+            "ack_status": declaration["status"],
         })
     return response(200, {"items": items})
 
@@ -265,7 +273,7 @@ def response_items(recording_id):
 
 
 def transcript_signature(recording_id, replies):
-    return "|".join([recording_id] + [
+    return "|".join(["ack-v2", recording_id] + [
         f"{item['response_id']}:{len(item.get('segments', []))}" for item in replies
     ])
 
@@ -286,7 +294,7 @@ def media_format(content_type):
     }.get(base, "webm")
 
 
-def start_transcript_job(recording_id, request_id, role, object_key, content_type, speaker, anchor_seconds=None):
+def start_transcript_job(recording_id, request_id, role, object_key, content_type, speaker, anchor_seconds=None, response_id=None):
     job_name = f"tinman-{recording_id[:8]}-{uuid.uuid4().hex[:16]}"
     output_key = f"transcripts/{recording_id}/{request_id}/{job_name}.json"
     TRANSCRIBE.start_transcription_job(
@@ -303,6 +311,8 @@ def start_transcript_job(recording_id, request_id, role, object_key, content_typ
     }
     if anchor_seconds is not None:
         job["anchor_seconds"] = Decimal(str(anchor_seconds))
+    if response_id is not None:
+        job["response_id"] = response_id
     return job
 
 
@@ -326,7 +336,7 @@ def unlock_transcript(data):
         for segment in reply.get("segments", []):
             jobs.append(start_transcript_job(
                 recording_id, request_id, "annotation", segment["object_key"], segment["content_type"],
-                reply.get("self_id", "Responder"), float(segment.get("anchor_seconds", 0)),
+                reply.get("self_id", "Responder"), float(segment.get("anchor_seconds", 0)), reply["response_id"],
             ))
     created_at = now_iso()
     TABLE.put_item(Item={
@@ -382,6 +392,7 @@ def assemble_transcript(recording_id, jobs):
             continue
         annotations.append({
             "speaker": job["speaker"],
+            "response_id": job.get("response_id"),
             "anchor_seconds": float(job.get("anchor_seconds", 0)),
             "text": transcript_text(transcript_payload(job["output_key"])),
         })
@@ -398,6 +409,7 @@ def assemble_transcript(recording_id, jobs):
         if annotation["text"]:
             parts.append({
                 "speaker": annotation["speaker"], "role": "annotation",
+                "response_id": annotation.get("response_id"),
                 "anchor_seconds": annotation["anchor_seconds"], "text": annotation["text"],
             })
         cursor = end
@@ -405,6 +417,64 @@ def assemble_transcript(recording_id, jobs):
     if tail:
         parts.append({"speaker": original_speaker, "role": "original", "text": tail})
     return parts
+
+
+
+ACKNOWLEDGMENT_PATTERN = re.compile(
+    r"\bi\s+(?:(?:speak|am\s+speaking)\s+(?:for|on\s+behalf\s+of)|am\s+a\s+speaker\s+for)\s+our\s+lovely\s+system\b",
+    re.IGNORECASE,
+)
+
+
+def start_acknowledgment_jobs(item):
+    request_id = str(uuid.uuid4())
+    return [
+        start_transcript_job(
+            item["recording_id"], request_id, "acknowledgment",
+            segment["object_key"], segment["content_type"], item.get("self_id", "Responder"),
+            float(segment.get("anchor_seconds", 0)), item["response_id"],
+        )
+        for segment in item.get("segments", [])
+    ]
+
+
+def resolve_acknowledgment(item):
+    status = item.get("ack_status")
+    if status == "complete":
+        return {"status": "complete", "qualifies": bool(item.get("speaks_for_our_lovely_system", False))}
+    jobs = item.get("ack_jobs", [])
+    if not jobs:
+        jobs = start_acknowledgment_jobs(item)
+        TABLE.update_item(
+            Key={"pk": item["pk"], "sk": item["sk"]},
+            UpdateExpression="SET ack_status=:status, ack_jobs=:jobs",
+            ExpressionAttributeValues={":status": "processing", ":jobs": jobs},
+        )
+        return {"status": "processing", "qualifies": False}
+
+    states = [
+        TRANSCRIBE.get_transcription_job(TranscriptionJobName=job["job_name"])
+        ["TranscriptionJob"]["TranscriptionJobStatus"]
+        for job in jobs
+    ]
+    if "FAILED" in states:
+        TABLE.update_item(
+            Key={"pk": item["pk"], "sk": item["sk"]},
+            UpdateExpression="SET ack_status=:status",
+            ExpressionAttributeValues={":status": "failed"},
+        )
+        return {"status": "failed", "qualifies": False}
+    if any(state != "COMPLETED" for state in states):
+        return {"status": "processing", "qualifies": False}
+
+    text = " ".join(transcript_text(transcript_payload(job["output_key"])) for job in jobs).strip()
+    qualifies = bool(ACKNOWLEDGMENT_PATTERN.search(text))
+    TABLE.update_item(
+        Key={"pk": item["pk"], "sk": item["sk"]},
+        UpdateExpression="SET ack_status=:status, speaks_for_our_lovely_system=:qualifies, acknowledgment_text=:text",
+        ExpressionAttributeValues={":status": "complete", ":qualifies": qualifies, ":text": text},
+    )
+    return {"status": "complete", "qualifies": qualifies}
 
 
 def get_transcript(event):

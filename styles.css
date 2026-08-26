@@ -171,3 +171,13 @@ body.about-page{overflow:auto}
 .common-meter>.recorder .record-submit button{padding-top:6px;padding-bottom:6px}
 @media(max-width:900px){:root{--meter-height:132px;--search-top:152px;--workspace-top:218px}.common-meter #micVisualizer,.common-meter #playVisualizer{height:72px}}
 @media(max-width:760px){:root{--meter-height:148px;--search-top:168px;--workspace-top:234px}.common-meter #micVisualizer,.common-meter #playVisualizer{height:88px}}
+
+
+/* Declared system speakers and accountability metrics */
+.reply-card.system-speaker{border-left-color:#8b1f34;background:linear-gradient(100deg,rgba(255,238,242,.96),rgba(248,250,251,.82))}
+.reply-meta{justify-content:flex-start}.reply-meta>div:first-child{margin-right:auto}.system-speaker-badge{font-size:22px;line-height:1;cursor:help;filter:drop-shadow(0 1px 0 #fff)}
+.browserHead{flex-wrap:wrap}.browser-metrics{display:flex;gap:7px;align-items:stretch;margin-left:auto}
+.browser-metrics span{display:flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid #6b767b;background:rgba(248,250,251,.72);font-size:11px;font-weight:750;white-space:nowrap}
+.browser-metrics strong{font-size:18px;line-height:1;color:#20272a}
+.search-strip label:has(#searchSpeaker) select{width:104px}
+@media(max-width:760px){.browser-metrics{order:3;width:100%;margin-left:0;overflow-x:auto}}
