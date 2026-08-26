@@ -36,3 +36,8 @@ header{grid-column:1/-1;width:min(980px,100%);padding:0 8px;color:white;text-sha
 
 button:active:not(:disabled){box-shadow:inset 0 2px 4px #35404566;transform:translateY(1px)}
 
+
+.common-meter{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:min(1320px,calc(100% - 140px));z-index:30}
+.meter-space{grid-column:1/-1;height:78px}
+@media(max-width:900px){.common-meter{width:min(100% - 44px,900px)}}
+@media(max-width:760px){.common-meter{width:calc(100% - 24px)}}
