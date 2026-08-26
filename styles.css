@@ -204,3 +204,47 @@ body.about-page{
   background-size:cover;
   background-attachment:fixed;
 }
+
+
+/* Give the About artwork a visible stage instead of burying it under content. */
+body.about-page{
+  position:relative;
+  background:#080b09;
+}
+body.about-page::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.64) 0%,rgba(0,0,0,.40) 35%,rgba(0,0,0,.04) 68%,rgba(0,0,0,.16) 100%),
+    url('/assets/tinman-policy-vault.png') center/cover no-repeat;
+}
+.about-page main{
+  position:relative;
+  z-index:1;
+}
+.about-page .about-hero{
+  box-sizing:border-box;
+  width:min(760px,55vw);
+  min-height:calc(100vh - 88px);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:48px 8px;
+}
+.about-page .about-grid{
+  position:relative;
+}
+@media(max-width:760px){
+  body.about-page::before{
+    background-position:62% center;
+  }
+  .about-page .about-hero{
+    width:100%;
+    min-height:72vh;
+    justify-content:flex-end;
+    padding-bottom:42px;
+  }
+}
