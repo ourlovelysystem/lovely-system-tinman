@@ -248,3 +248,110 @@ body.about-page::before{
     padding-bottom:42px;
   }
 }
+
+
+/* Vertical search rail: fixed left of the independent scroll workspace. */
+:root{
+  --search-rail-width:220px;
+  --search-gap:14px;
+  --workspace-top:136px;
+}
+.search-strip{
+  top:var(--workspace-top);
+  bottom:12px;
+  left:var(--deck-side);
+  right:auto;
+  width:var(--search-rail-width);
+  height:auto;
+  padding:12px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  align-content:start;
+  align-items:stretch;
+  gap:8px;
+  overflow-x:hidden;
+  overflow-y:auto;
+}
+.search-strip::before{
+  content:"Search recordings";
+  display:block;
+  padding-bottom:4px;
+  border-bottom:1px solid var(--line);
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.search-strip label{
+  width:100%;
+  min-width:0;
+  font-size:10px;
+}
+.search-strip input,
+.search-strip select,
+.search-strip input[type="datetime-local"],
+.search-strip input[type="search"],
+.search-strip input[type="number"],
+.search-strip label:has(#searchSpeaker) select,
+.search-strip label:has(#searchInquiry) select,
+.search-strip label:has(#searchSensitive) select,
+.search-strip label:has(#searchQuarantine) select{
+  width:100%;
+  min-width:0;
+}
+.search-strip button{
+  width:100%;
+}
+.search-strip output{
+  display:block;
+  width:100%;
+  min-width:0;
+  padding:3px 1px;
+}
+.scroll-workspace{
+  top:var(--workspace-top);
+  left:calc(var(--deck-side) + var(--search-rail-width) + var(--search-gap));
+  padding:24px var(--deck-side) 90px 0;
+}
+@media(max-width:900px) and (min-width:761px){
+  :root{
+    --search-rail-width:190px;
+    --workspace-top:152px;
+  }
+}
+@media(max-width:760px){
+  :root{
+    --workspace-top:242px;
+  }
+  .search-strip{
+    top:168px;
+    bottom:auto;
+    left:12px;
+    right:12px;
+    width:auto;
+    height:62px;
+    padding:6px 8px;
+    display:flex;
+    align-items:end;
+    gap:7px;
+    overflow-x:auto;
+    overflow-y:hidden;
+  }
+  .search-strip::before{display:none}
+  .search-strip label{width:auto}
+  .search-strip input[type="datetime-local"]{width:154px}
+  .search-strip input[type="search"]{width:125px}
+  .search-strip input[type="number"]{width:62px}
+  .search-strip select,
+  .search-strip label:has(#searchSpeaker) select,
+  .search-strip label:has(#searchInquiry) select,
+  .search-strip label:has(#searchSensitive) select,
+  .search-strip label:has(#searchQuarantine) select{width:96px}
+  .search-strip button{width:auto}
+  .search-strip output{width:auto;min-width:48px}
+  .scroll-workspace{
+    top:var(--workspace-top);
+    left:0;
+    padding:24px 12px 90px;
+  }
+}
