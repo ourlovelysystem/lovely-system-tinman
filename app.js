@@ -125,11 +125,11 @@
 
   function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function transcriptMarkup(item,transcript){
-    if(!transcript||transcript.status==='locked')return `<div class="column-label">+2 Written transcript</div><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Unlock transcript</button>`;
-    if(transcript.status==='processing')return '<div class="column-label">+2 Written transcript</div><p class="transcript-state">Transcribing…</p>';
-    if(transcript.status==='failed')return `<div class="column-label">+2 Written transcript</div><p class="transcript-state error">Transcription failed.</p><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Try again</button>`;
+    if(!transcript||transcript.status==='locked')return `<div class="column-label">Written transcript</div><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Unlock transcript</button>`;
+    if(transcript.status==='processing')return '<div class="column-label">Written transcript</div><p class="transcript-state">Transcribing…</p>';
+    if(transcript.status==='failed')return `<div class="column-label">Written transcript</div><p class="transcript-state error">Transcription failed.</p><button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Try again</button>`;
     const parts=(transcript.parts||[]).map(part=>`<p class="transcript-part ${part.role}"><strong>${escapeHtml(part.speaker)}</strong><span>${escapeHtml(part.text)}</span></p>`).join('');
-    return `<div class="column-label">+2 Written transcript</div>${transcript.status==='stale'?'<p class="transcript-state">New responses are not included.</p>':''}<div class="transcript-parts">${parts||'<p class="empty">No speech detected.</p>'}</div>${transcript.status==='stale'?`<button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Update transcript</button>`:''}`;
+    return `<div class="column-label">Written transcript</div>${transcript.status==='stale'?'<p class="transcript-state">New responses are not included.</p>':''}<div class="transcript-parts">${parts||'<p class="empty">No speech detected.</p>'}</div>${transcript.status==='stale'?`<button class="unlock-transcript" data-unlock-transcript="${escapeHtml(item.recording_id)}">Update transcript</button>`:''}`;
   }
 
   function responseMarkup(item,responses,transcript){
@@ -150,7 +150,7 @@
           <audio class="source-audio" controls preload="none" crossorigin="anonymous" src="${escapeHtml(item.play_url)}"></audio>
         </section>
         <section class="thread-cell response-cell">
-          <div class="column-label">+1 Audio responses</div>
+          <div class="column-label">Audio responses</div>
           <div class="response-list">${responseCards}</div>
           <button class="respond-button" data-respond-to="${escapeHtml(item.recording_id)}">Insert spoken response</button>
           <div class="response-composer" data-composer="${escapeHtml(item.recording_id)}" hidden>
