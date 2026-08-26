@@ -462,7 +462,7 @@ def analyze_text(text):
     value = str(text or "").strip()
     inquiry = "?" in value or bool(QUESTION_START_PATTERN.search(value)) or bool(INFORMATION_REQUEST_PATTERN.search(value))
     sensitive = any(pattern.search(value) for pattern in SENSITIVE_PATTERNS)
-    quarantine = bool(re.search(r"\\bquarantine\\b", value, re.IGNORECASE))
+    quarantine = bool(re.search(r"\bquarantine\b", value, re.IGNORECASE))
     return {
         "requests_additional_information": inquiry,
         "possible_sensitive_information": sensitive,
@@ -491,7 +491,7 @@ def resolve_original_analysis(item):
             "status": "complete",
             "requests_additional_information": bool(item.get("requests_additional_information", False)),
             "possible_sensitive_information": bool(item.get("possible_sensitive_information", False)),
-            "contains_quarantine": bool(item.get("contains_quarantine", False)) or bool(re.search(r"\\bquarantine\\b", str(item.get("analysis_text", "")), re.IGNORECASE)),
+            "contains_quarantine": bool(item.get("contains_quarantine", False)) or bool(re.search(r"\bquarantine\b", str(item.get("analysis_text", "")), re.IGNORECASE)),
         }
     jobs = item.get("analysis_jobs", [])
     if not jobs:
@@ -550,7 +550,7 @@ def resolve_acknowledgment(item):
             "status": "complete", "qualifies": bool(item.get("speaks_for_our_lovely_system", False)),
             "requests_additional_information": bool(item.get("requests_additional_information", False)),
             "possible_sensitive_information": bool(item.get("possible_sensitive_information", False)),
-            "contains_quarantine": bool(item.get("contains_quarantine", False)) or bool(re.search(r"\\bquarantine\\b", str(item.get("acknowledgment_text", "")), re.IGNORECASE)),
+            "contains_quarantine": bool(item.get("contains_quarantine", False)) or bool(re.search(r"\bquarantine\b", str(item.get("acknowledgment_text", "")), re.IGNORECASE)),
         }
     jobs = item.get("ack_jobs", [])
     if not jobs:
