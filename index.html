@@ -23,9 +23,9 @@
       <div class="controls">
         <button id="recordButton" class="primary">Record</button>
         <button id="stopButton" disabled>Stop</button>
-        <button id="rewindButton" disabled>−10 seconds</button>
+        <button id="rewindButton" class="jump" disabled aria-label="Jump back 10 seconds" title="Jump back 10 seconds">↶</button>
         <button id="playButton" disabled>Replay</button>
-        <button id="forwardButton" disabled>+10 seconds</button>
+        <button id="forwardButton" class="jump" disabled aria-label="Jump forward 10 seconds" title="Jump forward 10 seconds">↷</button>
       </div>
       <div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div>
       <canvas id="visualizer" aria-label="Live microphone level" role="img"></canvas>
