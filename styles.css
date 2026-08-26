@@ -450,3 +450,39 @@ body.about-page::before{
     width:calc(100% - 24px);
   }
 }
+
+
+/* Render the About artwork as content; stop relying on body/background painting. */
+body.about-page{
+  background-color:#080b09!important;
+  background-image:none!important;
+}
+.about-page .about-hero{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  background:none!important;
+}
+.about-page .about-hero-image{
+  position:absolute;
+  inset:0;
+  z-index:-2;
+  display:block;
+  width:100%;
+  height:100%;
+  max-width:none;
+  object-fit:cover;
+  object-position:center;
+}
+.about-page .about-hero::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.70) 0%,rgba(0,0,0,.43) 37%,rgba(0,0,0,.03) 69%,rgba(0,0,0,.12) 100%);
+}
+.about-page .about-hero > :not(.about-hero-image){
+  position:relative;
+  z-index:1;
+}
