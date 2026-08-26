@@ -7,7 +7,7 @@
     <div class="meter-channel"><div class="meter-head"><strong>Microphone</strong><span id="micMeterMode">Ready</span></div><canvas id="micVisualizer" aria-label="Live microphone level" role="img"></canvas></div>
     <section class="recorder" aria-labelledby="recordHeading">
     <h2 id="recordHeading">Record</h2>
-    <div class="record-field"><label for="selfId">Public self-identification</label><input id="selfId" maxlength="80" autocomplete="nickname" placeholder="Public name or identifier"></div>
+    <div class="record-field"><label for="selfId">Public self-identification</label><input id="selfId" maxlength="80" autocomplete="nickname" placeholder="Name / public identity"></div>
     <div class="record-field"><label for="title">Title</label><input id="title" maxlength="120" placeholder="Optional title"></div>
     <div class="record-actions"><div class="controls"><button id="recordButton" class="primary">Record</button><button id="stopButton" disabled>Stop</button><button id="rewindButton" class="jump" disabled aria-label="Jump back 10 seconds" title="Jump back 10 seconds">↶</button><button id="playButton" disabled>Replay</button><button id="forwardButton" class="jump" disabled aria-label="Jump forward 10 seconds" title="Jump forward 10 seconds">↷</button></div><div class="time"><span id="recordingState">Ready</span><span id="elapsed">0:00</span></div></div>
     <audio id="preview" controls crossorigin="anonymous" hidden></audio>
