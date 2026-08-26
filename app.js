@@ -121,11 +121,10 @@
           <div class="response-composer" data-composer="${escapeHtml(item.recording_id)}" hidden>
             <label>Public self-identification<input class="response-self-id" maxlength="80" placeholder="How should this response identify you?"></label>
             <div class="response-controls">
-              <button class="comment-button primary">Insert comment</button>
-              <button class="stop-comment-button" disabled>Finish comment</button>
+              <button class="comment-button primary" aria-label="Hold to annotate the original recording">Hold to annotate</button>
               <button class="submit-response-button" disabled>Submit response</button>
             </div>
-            <div class="response-status"><span>Listen, pause, and insert spoken comments.</span><span class="response-duration">0:00</span></div>
+            <div class="response-status"><span>Play the original. Hold to annotate; release to continue.</span><span class="response-duration">0:00</span></div>
             <p class="response-notice" data-response-notice="${escapeHtml(item.recording_id)}" role="status"></p>
           </div>
         </section>
@@ -168,10 +167,11 @@
       session.source.pause();
       session.commentAnchor=Math.round((session.source.currentTime||0)*10)/10;
       session.commentStarted=Date.now();
+      if(!session.holdActive)return;
       session.recorder.start();
-      session.composer.querySelector('.comment-button').disabled=true;
-      session.composer.querySelector('.stop-comment-button').disabled=false;
-      responseNotice(session.recordingId,`Recording insertion at ${format(session.commentAnchor)}…`);
+      const holdButton=session.composer.querySelector('.comment-button');
+      holdButton.classList.add('annotating');holdButton.textContent='Release to continue';
+      responseNotice(session.recordingId,`Annotating at ${format(session.commentAnchor)}…`);
     }catch(error){responseNotice(session.recordingId,`Microphone unavailable: ${error.message}`,true)}
   }
 
@@ -184,10 +184,10 @@
     session.clips.push({blob:clip,anchor_seconds:session.commentAnchor,duration_seconds:Math.round(durationMs/100)/10});
     session.spokenMs+=durationMs;session.recorder=null;
     session.composer.querySelector('.response-duration').textContent=format(session.spokenMs/1000);
-    session.composer.querySelector('.comment-button').disabled=false;
-    session.composer.querySelector('.stop-comment-button').disabled=true;
+    const holdButton=session.composer.querySelector('.comment-button');
+    holdButton.classList.remove('annotating');holdButton.textContent='Hold to annotate';
     session.composer.querySelector('.submit-response-button').disabled=false;
-    responseNotice(session.recordingId,'Insertion captured. Continuing the original.');
+    responseNotice(session.recordingId,'Annotation inserted. Continuing the original.');
     session.source.play().catch(()=>{});
   }
 
@@ -243,10 +243,33 @@
     if(respond)return openResponseComposer(respond.dataset.respondTo);
     const composer=e.target.closest('.response-composer');
     if(!composer||!responseSession)return;
-    if(e.target.closest('.comment-button'))startResponseComment(responseSession);
-    if(e.target.closest('.stop-comment-button'))stopResponseComment(responseSession);
     if(e.target.closest('.submit-response-button'))submitResponse(responseSession);
   };
+
+  function beginAnnotation(button,event){
+    if(!responseSession||!button.closest('.response-composer'))return;
+    event.preventDefault();
+    responseSession.holdActive=true;
+    if(event.pointerId!==undefined)button.setPointerCapture?.(event.pointerId);
+    startResponseComment(responseSession);
+  }
+  function endAnnotation(event){
+    if(!responseSession||!responseSession.holdActive)return;
+    responseSession.holdActive=false;event?.preventDefault();
+    stopResponseComment(responseSession);
+  }
+  $('recordings').addEventListener('pointerdown',event=>{
+    const button=event.target.closest('.comment-button');if(button)beginAnnotation(button,event);
+  });
+  $('recordings').addEventListener('pointerup',endAnnotation);
+  $('recordings').addEventListener('pointercancel',endAnnotation);
+  $('recordings').addEventListener('keydown',event=>{
+    const button=event.target.closest('.comment-button');
+    if(button&&(event.key===' '||event.key==='Enter')&&!event.repeat)beginAnnotation(button,event);
+  });
+  $('recordings').addEventListener('keyup',event=>{
+    if(event.key===' '||event.key==='Enter')endAnnotation(event);
+  });
 
   async function loadRecordings(){
     closeResponseSession();responseIndex.clear();$('recordings').innerHTML='<p class="empty">Loading recordings…</p>';
