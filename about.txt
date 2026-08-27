@@ -1,0 +1,34 @@
+About Tin Man
+
+Tin Man is a public voice-message and response system built to make institutional contact inspectable.
+
+Why it exists
+
+Institutions often control a conversation by controlling its record. A message may be received privately, routed out of sight, summarized by someone else, delayed, or ignored. The person who spoke has little evidence of what reached whom, or what came back.
+
+Tin Man makes the contact surface public. Original messages, spoken responses, and the relationship between them remain visible. Its position is simple: information asymmetry should not decide who gets heard or who must answer.
+
+Where it stands out
+
+- Voice remains the source. The system does not begin by reducing a speaker to somebody else's summary.
+- Responses attach to moments. A responder can pause the original, speak an annotation, release, and continue.
+- The result is interleaved. Playback preserves the original sequence and inserts comments where they were made.
+- One original can receive many responses. Each response stays aligned with the entry it addresses.
+- Transcription is explicit. A combined transcript is unlocked on demand; it is not the primary record.
+
+Public surface. Public source.
+
+Tin Man's repository is visible at https://github.com/ourlovelysystem/lovely-system-tinman. The application, infrastructure template, and event history can be inspected there.
+
+AWS capabilities Tin Man instruments
+
+- AWS Amplify Hosting hosts the static public interface and deploys changes from the repository.
+- Amazon API Gateway exposes the HTTP routes used to create, complete, list, respond to, and transcribe recordings.
+- AWS Lambda runs the Python backend that coordinates uploads, metadata, responses, playback access, and transcription jobs.
+- Amazon S3 stores original audio, response audio, and transcript output in a private, encrypted bucket. Presigned URLs provide time-limited upload and playback access.
+- Amazon DynamoDB stores recording, response, annotation, duration, and transcript-status metadata using on-demand capacity.
+- Amazon Transcribe creates combined written transcripts on demand from the original and its current spoken annotations.
+- AWS SAM and CloudFormation define the serverless API, function, storage, permissions, events, and stack outputs as reviewable infrastructure.
+- AWS IAM limits the backend's working permissions to its DynamoDB table, S3 bucket, and required transcription actions.
+
+Tin Man — Where information asymmetry comes to die.
